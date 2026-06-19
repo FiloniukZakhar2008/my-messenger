@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Мій месенджер</title>
+  <style>
+    body { font-family: Arial; max-width: 500px; margin: 40px auto; }
+    #messages { list-style: none; padding: 0; }
+    #messages li { padding: 8px; margin-bottom: 5px; background: #f1f1f1; border-radius: 8px; }
+    #messages li b { color: #2563eb; }
+    #form { display: flex; margin-top: 10px; }
+    #input { flex: 1; padding: 10px; }
+    button { padding: 10px 20px; }
+    #login { text-align: center; margin-top: 80px; }
+    #login input { padding: 10px; font-size: 16px; display: block; margin: 10px auto; width: 200px; }
+    #chatTitle { color: #666; }
+  </style>
+</head>
+<body>
+
+<div id="login">
+    <h2>Вхід у чат</h2>
+    <input id="passwordInput" type="password" placeholder="Секретний код доступу" />
+    <input id="usernameInput" placeholder="Твоє ім'я" />
+    <input id="partnerInput" placeholder="Ім'я співрозмовника" />
+    <button id="loginBtn">Увійти</button>
+    <p id="errorMsg" style="color: red;"></p>
+  </div>
+
+  <div id="chat" style="display: none;">
+    <h2>Мій месенджер</h2>
+    <p id="chatTitle"></p>
+    <ul id="messages"></ul>
+
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
+      <button>Відправити</button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let username = '';
+    let roomName = '';
+
+    const loginDiv = document.getElementById('login');
+    const chatDiv = document.getElementById('chat');
+    const passwordInput = document.getElementById('passwordInput');
+    const usernameInput = document.getElementById('usernameInput');
+    const partnerInput = document.getElementById('partnerInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const chatTitle = document.getElementById('chatTitle');
+    const errorMsg = document.getElementById('errorMsg');
+
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+
+    function makeRoomName(nameA, nameB) {
+      const names = [nameA.toLowerCase(), nameB.toLowerCase()].sort();
+      return names[0] + '_' + names[1];
+    }
+
+    loginBtn.addEventListener('click', () => {
+      const password = passwordInput.value.trim();
+      const myName = usernameInput.value.trim();
+      const partnerName = partnerInput.value.trim();
+
+      if (!password || !myName || !partnerName) {
+        errorMsg.textContent = 'Заповни всі поля';
+        return;
+      }
+
+      // Перевіряємо код доступу через сервер
+      socket.emit('check password', password, (isValid) => {
+        if (!isValid) {
+          errorMsg.textContent = 'Невірний код доступу';
+          return;
+        }
+
+        username = myName;
+        roomName = makeRoomName(myName, partnerName);
+
+        loginDiv.style.display = 'none';
+        chatDiv.style.display = 'block';
+        chatTitle.textContent = 'Чат з: ' + partnerName;
+
+        socket.emit('join room', roomName);
+      });
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chat message', { room: roomName, text: input.value, user: username });
+        input.value = '';
+      }
+    });
+
+    socket.on('chat message', (data) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<b>' + data.user + ':</b> ' + data.text;
+      messages.appendChild(li);
+    });
+  </script>
+</body>
+</html>
