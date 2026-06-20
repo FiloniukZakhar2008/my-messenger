@@ -1,108 +1,471 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <title>Мій месенджер</title>
-  <style>
-    body { font-family: Arial; max-width: 500px; margin: 40px auto; }
-    #messages { list-style: none; padding: 0; }
-    #messages li { padding: 8px; margin-bottom: 5px; background: #f1f1f1; border-radius: 8px; }
-    #messages li b { color: #2563eb; }
-    #form { display: flex; margin-top: 10px; }
-    #input { flex: 1; padding: 10px; }
-    button { padding: 10px 20px; }
-    #login { text-align: center; margin-top: 80px; }
-    #login input { padding: 10px; font-size: 16px; display: block; margin: 10px auto; width: 200px; }
-    #chatTitle { color: #666; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мій месенджер</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    margin: 0;
+    height: 100vh;
+    background: #0e1621;
+    color: #e1e1e1;
+  }
+
+  /* --- Auth screen --- */
+  #auth {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #authBox {
+    background: #17212b;
+    padding: 32px;
+    border-radius: 16px;
+    width: 300px;
+    text-align: center;
+  }
+  #authBox h2 { margin-top: 0; color: #fff; }
+  #authBox input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #2b3a4a;
+    background: #0e1621;
+    color: #fff;
+    font-size: 15px;
+  }
+  #authBox button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #2ea6ff;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #authBox button:hover { background: #1c93ec; }
+  #toggleAuth {
+    margin-top: 14px;
+    color: #2ea6ff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #authError { color: #ff6b6b; min-height: 18px; font-size: 13px; }
+
+  /* --- App layout --- */
+  #app {
+    display: none;
+    height: 100vh;
+  }
+  #app.show { display: flex; }
+
+  #sidebar {
+    width: 320px;
+    background: #17212b;
+    border-right: 1px solid #0e1621;
+    display: flex;
+    flex-direction: column;
+  }
+  #sidebarHeader {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #0e1621;
+  }
+  #sidebarHeader b { color: #fff; }
+  #sidebarHeader > div { display: flex; gap: 8px; }
+  #logoutBtn {
+    background: #2b3a4a;
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #logoutBtn:hover { background: #ff6b6b; }
+  #newChatBtn {
+    background: #2ea6ff;
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  #chatList { flex: 1; overflow-y: auto; }
+  .chatItem {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    border-bottom: 1px solid #0e1621;
+  }
+  .chatItem:hover { background: #202b36; }
+  .chatItem.active { background: #2b5278; }
+  .chatItem .name { color: #fff; font-weight: 600; }
+  .chatItem .preview {
+    color: #8a99a6;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #emptyList { padding: 20px; color: #8a99a6; text-align: center; font-size: 14px; }
+
+  #chatPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  #chatHeader {
+    padding: 16px;
+    border-bottom: 1px solid #17212b;
+    color: #fff;
+    font-weight: 600;
+  }
+  #noChatSelected {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a99a6;
+  }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    list-style: none;
+    margin: 0;
+  }
+  #messages li {
+    max-width: 60%;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: #182533;
+    color: #e1e1e1;
+    width: fit-content;
+  }
+  #messages li.mine {
+    background: #2b5278;
+    margin-left: auto;
+  }
+  #messages li .who {
+    font-size: 12px;
+    color: #8a99a6;
+    margin-bottom: 2px;
+  }
+  #form {
+    display: flex;
+    padding: 12px;
+    border-top: 1px solid #17212b;
+  }
+  #input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #182533;
+    color: #fff;
+    font-size: 15px;
+  }
+  #form button {
+    margin-left: 10px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 8px;
+    background: #2ea6ff;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* --- New chat modal --- */
+  #modalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+  }
+  #modalOverlay.show { display: flex; }
+  #modalBox {
+    background: #17212b;
+    padding: 24px;
+    border-radius: 12px;
+    width: 280px;
+  }
+  #modalBox h3 { margin-top: 0; color: #fff; }
+  #modalBox input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #2b3a4a;
+    background: #0e1621;
+    color: #fff;
+  }
+  #modalBox .row { display: flex; gap: 10px; margin-top: 14px; }
+  #modalBox button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #modalCancel { background: #2b3a4a; color: #fff; }
+  #modalStart { background: #2ea6ff; color: #fff; }
+  #modalError { color: #ff6b6b; font-size: 13px; min-height: 16px; }
+</style>
 </head>
 <body>
 
-<div id="login">
-    <h2>Вхід у чат</h2>
-    <input id="passwordInput" type="password" placeholder="Секретний код доступу" />
-    <input id="usernameInput" placeholder="Твоє ім'я" />
-    <input id="partnerInput" placeholder="Ім'я співрозмовника" />
-    <button id="loginBtn">Увійти</button>
-    <p id="errorMsg" style="color: red;"></p>
+<div id="auth">
+  <div id="authBox">
+    <h2 id="authTitle">Вхід</h2>
+    <input id="usernameInput" placeholder="Юзернейм (напр. zahar146)" autocomplete="username" />
+    <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="current-password" />
+    <button id="authSubmit">Увійти</button>
+    <p id="authError"></p>
+    <div id="toggleAuth">Немає акаунта? Зареєструватись</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <b id="myName"></b>
+      <div>
+        <button id="newChatBtn" title="Новий чат">+</button>
+        <button id="logoutBtn" title="Вийти">⏻</button>
+      </div>
+    </div>
+    <div id="chatList"></div>
   </div>
 
-  <div id="chat" style="display: none;">
-    <h2>Мій месенджер</h2>
-    <p id="chatTitle"></p>
-    <ul id="messages"></ul>
-
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
-      <button>Відправити</button>
-    </form>
+  <div id="chatPanel">
+    <div id="noChatSelected">Виберіть чат зліва або почніть новий</div>
+    <div id="activeChat" style="display:none; flex:1; display:flex; flex-direction:column;">
+      <div id="chatHeader"></div>
+      <ul id="messages"></ul>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
+        <button>➤</button>
+      </form>
+    </div>
   </div>
+</div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    let username = '';
-    let roomName = '';
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h3>Новий чат</h3>
+    <input id="partnerInput" placeholder="@юзернейм співрозмовника" />
+    <p id="modalError"></p>
+    <div class="row">
+      <button id="modalCancel">Скасувати</button>
+      <button id="modalStart">Почати</button>
+    </div>
+  </div>
+</div>
 
-    const loginDiv = document.getElementById('login');
-    const chatDiv = document.getElementById('chat');
-    const passwordInput = document.getElementById('passwordInput');
-    const usernameInput = document.getElementById('usernameInput');
-    const partnerInput = document.getElementById('partnerInput');
-    const loginBtn = document.getElementById('loginBtn');
-    const chatTitle = document.getElementById('chatTitle');
-    const errorMsg = document.getElementById('errorMsg');
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  let myUsername = '';
+  let currentRoom = '';
+  let currentPartner = '';
+  let isRegisterMode = false;
+  let authToken = localStorage.getItem('authToken') || '';
 
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
+  // Якщо є збережений токен — пробуємо автоматично залогінитись
+  socket.on('connect', () => {
+    if (authToken) {
+      socket.emit('auto login', authToken, (res) => {
+        if (res.success) {
+          enterApp(res.username);
+        } else {
+          localStorage.removeItem('authToken');
+          authToken = '';
+        }
+      });
+    }
+  });
 
-    function makeRoomName(nameA, nameB) {
-      const names = [nameA.toLowerCase(), nameB.toLowerCase()].sort();
-      return names[0] + '_' + names[1];
+  // --- Auth elements ---
+  const authDiv = document.getElementById('auth');
+  const appDiv = document.getElementById('app');
+  const usernameInput = document.getElementById('usernameInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const authSubmit = document.getElementById('authSubmit');
+  const authError = document.getElementById('authError');
+  const authTitle = document.getElementById('authTitle');
+  const toggleAuth = document.getElementById('toggleAuth');
+
+  toggleAuth.addEventListener('click', () => {
+    isRegisterMode = !isRegisterMode;
+    authTitle.textContent = isRegisterMode ? 'Реєстрація' : 'Вхід';
+    authSubmit.textContent = isRegisterMode ? 'Зареєструватись' : 'Увійти';
+    toggleAuth.textContent = isRegisterMode ? 'Вже є акаунт? Увійти' : "Немає акаунта? Зареєструватись";
+    authError.textContent = '';
+  });
+
+  authSubmit.addEventListener('click', () => {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    if (!username || !password) {
+      authError.textContent = 'Заповни всі поля';
+      return;
     }
 
-    loginBtn.addEventListener('click', () => {
-      const password = passwordInput.value.trim();
-      const myName = usernameInput.value.trim();
-      const partnerName = partnerInput.value.trim();
-
-      if (!password || !myName || !partnerName) {
-        errorMsg.textContent = 'Заповни всі поля';
+    const event = isRegisterMode ? 'register' : 'login';
+    socket.emit(event, { username, password }, (res) => {
+      if (!res.success) {
+        authError.textContent = res.error || 'Помилка';
         return;
       }
-
-      // Перевіряємо код доступу через сервер
-      socket.emit('check password', password, (isValid) => {
-        if (!isValid) {
-          errorMsg.textContent = 'Невірний код доступу';
-          return;
-        }
-
-        username = myName;
-        roomName = makeRoomName(myName, partnerName);
-
-        loginDiv.style.display = 'none';
-        chatDiv.style.display = 'block';
-        chatTitle.textContent = 'Чат з: ' + partnerName;
-
-        socket.emit('join room', roomName);
-      });
-    });
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', { room: roomName, text: input.value, user: username });
-        input.value = '';
+      if (isRegisterMode) {
+        // Після реєстрації одразу логінимось
+        socket.emit('login', { username, password }, (loginRes) => {
+          if (loginRes.success) {
+            authToken = loginRes.token;
+            localStorage.setItem('authToken', authToken);
+            enterApp(loginRes.username);
+          }
+        });
+      } else {
+        authToken = res.token;
+        localStorage.setItem('authToken', authToken);
+        enterApp(res.username);
       }
     });
+  });
 
-    socket.on('chat message', (data) => {
-      const li = document.createElement('li');
-      li.innerHTML = '<b>' + data.user + ':</b> ' + data.text;
-      messages.appendChild(li);
+  function enterApp(username) {
+    myUsername = username;
+    document.getElementById('myName').textContent = '@' + username;
+    authDiv.style.display = 'none';
+    appDiv.classList.add('show');
+    loadChats();
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    socket.emit('logout', authToken);
+    localStorage.removeItem('authToken');
+    authToken = '';
+    myUsername = '';
+    currentRoom = '';
+    appDiv.classList.remove('show');
+    authDiv.style.display = 'flex';
+    usernameInput.value = '';
+    passwordInput.value = '';
+  });
+
+  // --- Chat list ---
+  const chatListDiv = document.getElementById('chatList');
+
+  function loadChats() {
+    socket.emit('get chats', null, (chats) => {
+      chatListDiv.innerHTML = '';
+      if (chats.length === 0) {
+        chatListDiv.innerHTML = '<div id="emptyList">Поки немає чатів. Натисни "+", щоб почати.</div>';
+        return;
+      }
+      chats.forEach((chat) => {
+        const div = document.createElement('div');
+        div.className = 'chatItem';
+        div.dataset.room = chat.room;
+        const prefix = chat.lastUser === myUsername ? 'Ви: ' : '';
+        div.innerHTML = `<span class="name">@${escapeHtml(chat.partner)}</span><span class="preview">${prefix}${escapeHtml(chat.lastText)}</span>`;
+        div.addEventListener('click', () => openChat(chat.room, chat.partner));
+        if (chat.room === currentRoom) div.classList.add('active');
+        chatListDiv.appendChild(div);
+      });
     });
-  </script>
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // --- New chat modal ---
+  const modalOverlay = document.getElementById('modalOverlay');
+  const partnerInput = document.getElementById('partnerInput');
+  const modalError = document.getElementById('modalError');
+
+  document.getElementById('newChatBtn').addEventListener('click', () => {
+    modalOverlay.classList.add('show');
+    partnerInput.value = '';
+    modalError.textContent = '';
+    partnerInput.focus();
+  });
+
+  document.getElementById('modalCancel').addEventListener('click', () => {
+    modalOverlay.classList.remove('show');
+  });
+
+  document.getElementById('modalStart').addEventListener('click', () => {
+    const partnerUsername = partnerInput.value.trim();
+    socket.emit('start chat', { partnerUsername }, (res) => {
+      if (!res.success) {
+        modalError.textContent = res.error;
+        return;
+      }
+      modalOverlay.classList.remove('show');
+      openChat(res.room, res.partner);
+    });
+  });
+
+  // --- Active chat ---
+  const noChatSelected = document.getElementById('noChatSelected');
+  const activeChat = document.getElementById('activeChat');
+  const chatHeader = document.getElementById('chatHeader');
+  const messages = document.getElementById('messages');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+
+  function openChat(room, partner) {
+    currentRoom = room;
+    currentPartner = partner;
+    chatHeader.textContent = '@' + partner;
+    messages.innerHTML = '';
+    noChatSelected.style.display = 'none';
+    activeChat.style.display = 'flex';
+
+    document.querySelectorAll('.chatItem').forEach((el) => {
+      el.classList.toggle('active', el.dataset.room === room);
+    });
+
+    socket.emit('join room', room);
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (input.value.trim() && currentRoom) {
+      socket.emit('chat message', { room: currentRoom, text: input.value.trim() });
+      input.value = '';
+    }
+  });
+
+  socket.on('chat message', (data) => {
+    const li = document.createElement('li');
+    li.className = data.user === myUsername ? 'mine' : '';
+    li.innerHTML = `<div class="who">${escapeHtml(data.user)}</div>${escapeHtml(data.text)}`;
+    messages.appendChild(li);
+    messages.scrollTop = messages.scrollHeight;
+    loadChats();
+  });
+</script>
 </body>
 </html>
