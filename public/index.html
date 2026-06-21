@@ -453,6 +453,61 @@
     font-weight: 900;
     cursor: pointer;
   }
+  #voiceBtn {
+    margin-left: 0;
+    margin-right: 8px;
+    width: 44px;
+    background: var(--bg-input);
+    color: var(--text-bright);
+    border: 1px solid var(--border-color);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  #voiceBtn:hover { background: var(--bg-hover); }
+  #voiceBtn.recording {
+    background: var(--accent-hot);
+    color: #fff;
+    border-color: var(--accent-hot);
+    animation: pulseRec 1s ease-in-out infinite;
+  }
+  @keyframes pulseRec {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  #recordingBar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px 0;
+    color: var(--accent-hot);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #recordingBar.show { display: flex; }
+  #recordingBar .recDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-hot);
+    animation: pulseRec 1s ease-in-out infinite;
+  }
+  .voiceMsg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 200px;
+  }
+  .voiceMsg audio {
+    flex: 1;
+    height: 36px;
+    min-width: 160px;
+    max-width: 280px;
+  }
+  .voiceDuration {
+    font-size: 12px;
+    color: var(--text-dim-2);
+    white-space: nowrap;
+  }
 
   #toastContainer {
     position: fixed;
@@ -650,9 +705,11 @@
         </div>
       </div>
       <ul id="messages"></ul>
+      <div id="recordingBar"><span class="recDot"></span><span id="recordingLabel">Запис... 0:00</span></div>
       <form id="form">
+        <button type="button" id="voiceBtn" title="Утримуй для запису">🎤</button>
         <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
-        <button>➤</button>
+        <button type="submit">➤</button>
       </form>
     </div>
   </div>
@@ -1065,6 +1122,13 @@
     return d.innerHTML;
   }
 
+  function formatDuration(seconds) {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
   // --- New chat modal ---
   const modalOverlay = document.getElementById('modalOverlay');
   const partnerInput = document.getElementById('partnerInput');
@@ -1168,9 +1232,149 @@
     }
   });
 
+  // --- Голосові повідомлення ---
+  const voiceBtn = document.getElementById('voiceBtn');
+  const recordingBar = document.getElementById('recordingBar');
+  const recordingLabel = document.getElementById('recordingLabel');
+  const MAX_VOICE_SECONDS = 120;
+  let mediaRecorder = null;
+  let voiceStream = null;
+  let voiceChunks = [];
+  let voiceStartedAt = 0;
+  let voiceTimerId = null;
+  let isRecordingVoice = false;
+  let voiceSending = false;
+
+  function pickVoiceMimeType() {
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    return types.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+  }
+
+  function updateRecordingLabel() {
+    const elapsed = Math.floor((Date.now() - voiceStartedAt) / 1000);
+    recordingLabel.textContent = 'Запис... ' + formatDuration(elapsed);
+    if (elapsed >= MAX_VOICE_SECONDS) stopVoiceRecording(true);
+  }
+
+  async function startVoiceRecording() {
+    if (!currentRoom || isRecordingVoice || voiceSending) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      alert('Браузер не підтримує запис голосу');
+      return;
+    }
+
+    try {
+      voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (_err) {
+      alert('Немає доступу до мікрофона');
+      return;
+    }
+
+    const mimeType = pickVoiceMimeType();
+    voiceChunks = [];
+    mediaRecorder = mimeType
+      ? new MediaRecorder(voiceStream, { mimeType })
+      : new MediaRecorder(voiceStream);
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) voiceChunks.push(e.data);
+    };
+
+    mediaRecorder.start(250);
+    isRecordingVoice = true;
+    voiceStartedAt = Date.now();
+    voiceBtn.classList.add('recording');
+    recordingBar.classList.add('show');
+    updateRecordingLabel();
+    voiceTimerId = setInterval(updateRecordingLabel, 250);
+  }
+
+  function cleanupVoiceRecording() {
+    clearInterval(voiceTimerId);
+    voiceTimerId = null;
+    isRecordingVoice = false;
+    voiceBtn.classList.remove('recording');
+    recordingBar.classList.remove('show');
+    if (voiceStream) {
+      voiceStream.getTracks().forEach((track) => track.stop());
+      voiceStream = null;
+    }
+    mediaRecorder = null;
+    voiceChunks = [];
+  }
+
+  async function sendVoiceBlob(blob, duration) {
+    if (!blob || !currentRoom || voiceSending) return;
+    voiceSending = true;
+    voiceBtn.disabled = true;
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, blob.type.includes('ogg') ? 'voice.ogg' : 'voice.webm');
+      formData.append('token', authToken);
+      formData.append('room', currentRoom);
+      formData.append('duration', String(duration));
+
+      const res = await fetch('/api/voice-message', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!data.success) {
+        alert((data && data.error) || 'Не вдалось надіслати голосове');
+      }
+    } catch (_err) {
+      alert('Помилка мережі під час надсилання голосового');
+    } finally {
+      voiceSending = false;
+      voiceBtn.disabled = false;
+    }
+  }
+
+  function stopVoiceRecording(shouldSend) {
+    if (!isRecordingVoice || !mediaRecorder) return;
+    isRecordingVoice = false;
+
+    const recorder = mediaRecorder;
+    const duration = Math.max(1, Math.round((Date.now() - voiceStartedAt) / 1000));
+    const mimeType = recorder.mimeType || pickVoiceMimeType() || 'audio/webm';
+    const send = shouldSend;
+
+    recorder.onstop = async () => {
+      const blob = new Blob(voiceChunks, { type: mimeType });
+      cleanupVoiceRecording();
+      if (send && blob.size > 0 && duration >= 1) {
+        await sendVoiceBlob(blob, duration);
+      }
+    };
+
+    if (recorder.state !== 'inactive') recorder.stop();
+    else cleanupVoiceRecording();
+  }
+
+  function bindVoicePress(el) {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startVoiceRecording();
+    });
+    el.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startVoiceRecording();
+    }, { passive: false });
+    el.addEventListener('mouseup', () => stopVoiceRecording(true));
+    el.addEventListener('mouseleave', () => {
+      if (isRecordingVoice) stopVoiceRecording(true);
+    });
+    el.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      stopVoiceRecording(true);
+    }, { passive: false });
+    el.addEventListener('touchcancel', () => stopVoiceRecording(false));
+  }
+
+  bindVoicePress(voiceBtn);
+
   function renderMessage(data) {
     const li = document.createElement('li');
     li.className = data.user === myUsername ? 'mine' : '';
+    if (data.type === 'voice') li.classList.add('voice');
     if (data.id) li.dataset.id = data.id;
     fillMessageContent(li, data);
     messages.appendChild(li);
@@ -1185,21 +1389,34 @@
       return;
     }
     li.classList.remove('deleted');
-    li.dataset.text = data.text;
+    li.dataset.text = data.text || '';
     const tick = isMine
       ? `<span class="tick ${data.read ? 'read' : ''}">${data.read ? '✓✓' : '✓'}</span>`
       : '';
     const editedTag = data.edited ? '<span class="editedTag">(ред.)</span>' : '';
-    const actions = isMine
+    const isVoice = data.type === 'voice' && data.mediaUrl;
+    const actions = isMine && !isVoice
       ? `<span class="msgActions"><span class="editBtn" title="Редагувати">✎</span><span class="delBtn" title="Видалити">🗑</span></span>`
-      : '';
-    li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div><span class="msgText">${escapeHtml(data.text)}</span>${editedTag}${tick}`;
+      : (isMine ? `<span class="msgActions"><span class="delBtn" title="Видалити">🗑</span></span>` : '');
+
+    let bodyHtml;
+    if (isVoice) {
+      bodyHtml = `
+        <div class="voiceMsg">
+          <audio controls preload="metadata" src="${escapeHtml(data.mediaUrl)}"></audio>
+          <span class="voiceDuration">${formatDuration(data.duration)}</span>
+        </div>`;
+    } else {
+      bodyHtml = `<span class="msgText">${escapeHtml(data.text)}</span>`;
+    }
+
+    li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div>${bodyHtml}${editedTag}${tick}`;
 
     if (isMine) {
-      const editBtn = li.querySelector('.editBtn');
       const delBtn = li.querySelector('.delBtn');
-      editBtn.addEventListener('click', () => startEdit(li, data));
       delBtn.addEventListener('click', () => deleteMessage(li, data));
+      const editBtn = li.querySelector('.editBtn');
+      if (editBtn) editBtn.addEventListener('click', () => startEdit(li, data));
     }
   }
 
@@ -1273,7 +1490,16 @@
     const li = messages.querySelector(`li[data-id="${data.id}"]`);
     if (li) {
       const isMine = li.classList.contains('mine');
-      fillMessageContent(li, { user: isMine ? myUsername : currentPartner, text: data.text, edited: true, read: li.querySelector('.tick.read') !== null, deleted: false });
+      fillMessageContent(li, {
+        user: isMine ? myUsername : currentPartner,
+        text: data.text,
+        type: data.type || 'text',
+        mediaUrl: data.mediaUrl,
+        duration: data.duration,
+        edited: true,
+        read: li.querySelector('.tick.read') !== null,
+        deleted: false,
+      });
     }
     loadChats();
   });

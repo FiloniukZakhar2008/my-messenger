@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
+const multer = require('multer');
 const { Server } = require('socket.io');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
@@ -15,7 +16,116 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_Wn4Gn_lJq9SLRow
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const VOICE_BUCKET = 'chat-media';
+const MAX_VOICE_BYTES = 5 * 1024 * 1024;
+const voiceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_VOICE_BYTES },
+});
+
+function messagePreview(row) {
+  if (row.deleted) return 'Повідомлення видалено';
+  if (row.type === 'voice') return '🎤 Голосове повідомлення';
+  return row.text || '';
+}
+
+function getSessionUsername(token) {
+  return sessions.get((token || '').trim()) || null;
+}
+
+function isRoomMember(room, username) {
+  const parts = (room || '').split('_');
+  const user = (username || '').toLowerCase();
+  return parts.length === 2 && parts.includes(user);
+}
+
+async function uploadVoiceFile(room, buffer, mimeType) {
+  const ext = (mimeType || '').includes('ogg') ? 'ogg' : 'webm';
+  const filePath = `voice/${room}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${ext}`;
+  const { error } = await supabase.storage
+    .from(VOICE_BUCKET)
+    .upload(filePath, buffer, { contentType: mimeType || 'audio/webm', upsert: false });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(VOICE_BUCKET).getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+async function broadcastVoiceMessage(room, username, mediaUrl, duration, partnerIsViewing) {
+  const { data: inserted, error } = await supabase
+    .from('messages')
+    .insert({
+      room,
+      username,
+      text: '',
+      type: 'voice',
+      media_url: mediaUrl,
+      duration,
+      read: partnerIsViewing,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+
+  const payload = {
+    id: inserted.id,
+    user: username,
+    type: 'voice',
+    mediaUrl,
+    duration,
+    read: partnerIsViewing,
+  };
+
+  io.to(room).emit('chat message', payload);
+
+  const partnerUsername = getRoomPartner(room, username);
+  emitToUser(partnerUsername, 'new message notification', {
+    id: inserted.id,
+    room,
+    from: username,
+    type: 'voice',
+    text: '🎤 Голосове повідомлення',
+  });
+
+  return payload;
+}
+
 app.use(express.static('public'));
+
+app.post('/api/voice-message', voiceUpload.single('audio'), async (req, res) => {
+  try {
+    const username = getSessionUsername(req.body && req.body.token);
+    if (!username) {
+      return res.status(401).json({ success: false, error: 'Сесія недійсна, увійди знову' });
+    }
+
+    const room = (req.body && req.body.room || '').trim();
+    if (!isRoomMember(room, username)) {
+      return res.status(403).json({ success: false, error: 'Немає доступу до цієї кімнати' });
+    }
+
+    if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
+      return res.status(400).json({ success: false, error: 'Аудіофайл не отримано' });
+    }
+
+    const duration = Math.max(0, Math.min(300, Number(req.body.duration) || 0));
+    const mimeType = req.file.mimetype || 'audio/webm';
+    if (!mimeType.startsWith('audio/')) {
+      return res.status(400).json({ success: false, error: 'Дозволені лише аудіофайли' });
+    }
+
+    const mediaUrl = await uploadVoiceFile(room, req.file.buffer, mimeType);
+    const partnerIsViewing = isPartnerViewingRoom(room, username);
+    const payload = await broadcastVoiceMessage(room, username, mediaUrl, duration, partnerIsViewing);
+
+    res.json({ success: true, message: payload });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Не вдалось надіслати голосове повідомлення' });
+  }
+});
 
 // --- Сесії: token -> username (in-memory; при рестарті сервера всі розлогіняться) ---
 const sessions = new Map();
@@ -220,7 +330,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('messages')
-      .select('room, username, text, created_at, read, deleted')
+      .select('room, username, text, created_at, read, deleted, type, duration')
       .or(`room.ilike.${username.toLowerCase()}_%,room.ilike.%_${username.toLowerCase()}`)
       .order('created_at', { ascending: false });
 
@@ -238,7 +348,7 @@ io.on('connection', (socket) => {
         chat = {
           room: row.room,
           partner,
-          lastText: row.deleted ? 'Повідомлення видалено' : row.text,
+          lastText: messagePreview(row),
           lastUser: row.username,
           unread: 0,
         };
@@ -296,7 +406,7 @@ io.on('connection', (socket) => {
 
     supabase
       .from('messages')
-      .select('id, username, text, read, edited, deleted')
+      .select('id, username, text, read, edited, deleted, type, media_url, duration')
       .eq('room', room)
       .order('id', { ascending: true })
       .then(({ data, error }) => {
@@ -309,6 +419,9 @@ io.on('connection', (socket) => {
             id: row.id,
             user: row.username,
             text: row.deleted ? '' : row.text,
+            type: row.deleted ? 'text' : (row.type || 'text'),
+            mediaUrl: row.deleted ? null : row.media_url,
+            duration: row.duration,
             read: row.read,
             edited: row.edited,
             deleted: row.deleted,
@@ -342,6 +455,7 @@ io.on('connection', (socket) => {
     io.to(data.room).emit('chat message', {
       id: inserted.id,
       user: socket.username,
+      type: 'text',
       text,
       read: partnerIsViewing,
     });
@@ -371,13 +485,17 @@ io.on('connection', (socket) => {
     // Перевіряємо, що повідомлення належить цьому юзеру і не видалене
     const { data: existing, error: fetchErr } = await supabase
       .from('messages')
-      .select('id, username, deleted')
+      .select('id, username, deleted, type')
       .eq('id', id)
       .eq('room', room)
       .maybeSingle();
 
     if (fetchErr || !existing || existing.username !== socket.username || existing.deleted) {
       return cb({ success: false, error: 'Неможливо редагувати це повідомлення' });
+    }
+
+    if (existing.type && existing.type !== 'text') {
+      return cb({ success: false, error: 'Можна редагувати лише текстові повідомлення' });
     }
 
     const { error } = await supabase
