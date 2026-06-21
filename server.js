@@ -20,6 +20,30 @@ app.use(express.static('public'));
 // --- Сесії: token -> username (in-memory; при рестарті сервера всі розлогіняться) ---
 const sessions = new Map();
 
+// --- Онлайн-юзери: username (lowercase) -> кількість активних сокетів ---
+const onlineCounts = new Map();
+
+function markOnline(username) {
+  const key = username.toLowerCase();
+  const count = (onlineCounts.get(key) || 0) + 1;
+  onlineCounts.set(key, count);
+  if (count === 1) {
+    io.emit('user status', { username, online: true });
+  }
+}
+
+function markOffline(username) {
+  if (!username) return;
+  const key = username.toLowerCase();
+  const count = (onlineCounts.get(key) || 0) - 1;
+  if (count <= 0) {
+    onlineCounts.delete(key);
+    io.emit('user status', { username, online: false });
+  } else {
+    onlineCounts.set(key, count);
+  }
+}
+
 const HANDLE_RE = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/; // як @handle в Telegram: 5-32 символи, починається з літери
 
 function makeRoomName(nameA, nameB) {
@@ -133,6 +157,7 @@ io.on('connection', (socket) => {
     sessions.set(token, data.username);
 
     socket.username = data.username;
+    markOnline(socket.username);
     callback({ success: true, username: data.username, token });
   });
 
@@ -143,13 +168,33 @@ io.on('connection', (socket) => {
       return callback({ success: false });
     }
     socket.username = username;
+    markOnline(username);
     callback({ success: true, username });
   });
 
   // --- Логаут ---
   socket.on('logout', (token) => {
     sessions.delete(token);
+    markOffline(socket.username);
     socket.username = null;
+  });
+
+  // --- Список онлайн-юзернеймів ---
+  socket.on('get online users', (_unused, callback) => {
+    callback(Array.from(onlineCounts.keys()));
+  });
+
+  // --- Друкує / перестав друкувати ---
+  socket.on('typing', ({ room }) => {
+    if (!requireAuth(socket)) return;
+    if (room !== socket.currentRoom || !socket.rooms.has(room)) return;
+    socket.to(room).emit('typing', { room, user: socket.username });
+  });
+
+  socket.on('stop typing', ({ room }) => {
+    if (!requireAuth(socket)) return;
+    if (!room) return;
+    socket.to(room).emit('stop typing', { room, user: socket.username });
   });
 
   // --- Список чатів користувача ---
@@ -363,6 +408,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Хтось вийшов з сервера');
+    markOffline(socket.username);
   });
 });
 

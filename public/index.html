@@ -6,13 +6,88 @@
 <title>Мій месенджер</title>
 <style>
   * { box-sizing: border-box; }
+  :root {
+    --bg-main: #0e1621;
+    --bg-panel: #17212b;
+    --bg-input: #182533;
+    --bg-hover: #202b36;
+    --bg-active: #2b5278;
+    --border-color: #0e1621;
+    --border-color-2: #17212b;
+    --text-main: #e1e1e1;
+    --text-bright: #fff;
+    --text-dim: #8a99a6;
+    --text-dim-2: #cfd8e0;
+    --accent: #2ea6ff;
+    --accent-hover: #1c93ec;
+    --danger: #ff6b6b;
+    --bubble-mine: #2b5278;
+    --bubble-other: #182533;
+    --tick: #8aa9c4;
+    --tick-read: #6fd0ff;
+    --overlay: rgba(0,0,0,0.5);
+  }
+  body.light {
+    --bg-main: #f4f6f8;
+    --bg-panel: #ffffff;
+    --bg-input: #eef2f5;
+    --bg-hover: #e8edf1;
+    --bg-active: #d7e8fb;
+    --border-color: #e3e8ec;
+    --border-color-2: #e3e8ec;
+    --text-main: #232e3c;
+    --text-bright: #0e1621;
+    --text-dim: #6b7a89;
+    --text-dim-2: #44525f;
+    --accent: #2ea6ff;
+    --accent-hover: #1c93ec;
+    --danger: #e0524f;
+    --bubble-mine: #d7e8fb;
+    --bubble-other: #ffffff;
+    --tick: #8aa9c4;
+    --tick-read: #2ea6ff;
+    --overlay: rgba(0,0,0,0.3);
+  }
   body {
     font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 0;
     height: 100vh;
-    background: #0e1621;
-    color: #e1e1e1;
+    background: var(--bg-main);
+    color: var(--text-main);
   }
+
+  /* --- Avatars --- */
+  .avatar {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    flex-shrink: 0;
+    user-select: none;
+    position: relative;
+  }
+  .onlineDot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #4caf50;
+    border: 2px solid var(--bg-panel);
+    display: none;
+  }
+  .avatarWrap.online .onlineDot { display: block; }
+  .chatHeaderStatus {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+  .chatHeaderStatus.online { color: #4caf50; }
+  .chatHeaderStatus.typing { color: var(--accent); }
+  .preview.typing { color: var(--accent); font-style: italic; }
 
   /* --- Auth screen --- */
   #auth {
@@ -22,21 +97,21 @@
     justify-content: center;
   }
   #authBox {
-    background: #17212b;
+    background: var(--bg-panel);
     padding: 32px;
     border-radius: 16px;
     width: 300px;
     text-align: center;
   }
-  #authBox h2 { margin-top: 0; color: #fff; }
+  #authBox h2 { margin-top: 0; color: var(--text-bright); }
   #authBox input {
     width: 100%;
     padding: 12px;
     margin: 8px 0;
     border-radius: 8px;
     border: 1px solid #2b3a4a;
-    background: #0e1621;
-    color: #fff;
+    background: var(--bg-main);
+    color: var(--text-bright);
     font-size: 15px;
   }
   #authBox button {
@@ -45,19 +120,19 @@
     margin-top: 10px;
     border: none;
     border-radius: 8px;
-    background: #2ea6ff;
+    background: var(--accent);
     color: #fff;
     font-size: 15px;
     cursor: pointer;
   }
-  #authBox button:hover { background: #1c93ec; }
+  #authBox button:hover { background: var(--accent-hover); }
   #toggleAuth {
     margin-top: 14px;
-    color: #2ea6ff;
+    color: var(--accent);
     cursor: pointer;
     font-size: 14px;
   }
-  #authError { color: #ff6b6b; min-height: 18px; font-size: 13px; }
+  #authError { color: var(--danger); min-height: 18px; font-size: 13px; }
 
   /* --- App layout --- */
   #app {
@@ -68,8 +143,8 @@
 
   #sidebar {
     width: 320px;
-    background: #17212b;
-    border-right: 1px solid #0e1621;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
   }
@@ -78,23 +153,35 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid #0e1621;
+    border-bottom: 1px solid var(--border-color);
   }
-  #sidebarHeader b { color: #fff; }
-  #sidebarHeader > div { display: flex; gap: 8px; }
-  #logoutBtn {
-    background: #2b3a4a;
+  #sidebarHeader .myInfo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #sidebarHeader b { color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sidebarHeader > div { display: flex; gap: 8px; flex-shrink: 0; }
+  #themeBtn {
+    background: var(--bg-input);
     border: none;
-    color: #fff;
+    color: var(--text-bright);
     border-radius: 50%;
     width: 32px;
     height: 32px;
     font-size: 15px;
     cursor: pointer;
   }
-  #logoutBtn:hover { background: #ff6b6b; }
+  #themeBtn:hover { background: var(--bg-hover); }
+  #logoutBtn {
+    background: var(--bg-input);
+    border: none;
+    color: var(--text-bright);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #logoutBtn:hover { background: var(--danger); }
   #newChatBtn {
-    background: #2ea6ff;
+    background: var(--accent);
     border: none;
     color: #fff;
     border-radius: 50%;
@@ -107,21 +194,23 @@
   .chatItem {
     padding: 12px 16px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 12px;
     cursor: pointer;
-    border-bottom: 1px solid #0e1621;
+    border-bottom: 1px solid var(--border-color);
   }
-  .chatItem:hover { background: #202b36; }
-  .chatItem.active { background: #2b5278; }
-  .chatItem .name { color: #fff; font-weight: 600; }
+  .chatItem:hover { background: var(--bg-hover); }
+  .chatItem.active { background: var(--bg-active); }
+  .chatItem .chatItemBody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .chatItem .name { color: var(--text-bright); font-weight: 600; }
   .chatItem .preview {
-    color: #8a99a6;
+    color: var(--text-dim);
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  #emptyList { padding: 20px; color: #8a99a6; text-align: center; font-size: 14px; }
+  #emptyList { padding: 20px; color: var(--text-dim); text-align: center; font-size: 14px; }
 
   .chatItem { position: relative; }
   .chatItem .meta {
@@ -130,7 +219,7 @@
     justify-content: space-between;
   }
   .unreadBadge {
-    background: #2ea6ff;
+    background: var(--accent);
     color: #fff;
     font-size: 11px;
     font-weight: 700;
@@ -142,15 +231,15 @@
     justify-content: center;
     padding: 0 5px;
   }
-  .chatItem.hasUnread .name { color: #fff; }
-  .chatItem.hasUnread .preview { color: #cfd8e0; }
+  .chatItem.hasUnread .name { color: var(--text-bright); }
+  .chatItem.hasUnread .preview { color: var(--text-dim-2); }
 
   .tick {
     font-size: 12px;
     margin-left: 4px;
-    color: #8aa9c4;
+    color: var(--tick);
   }
-  .tick.read { color: #6fd0ff; }
+  .tick.read { color: var(--tick-read); }
 
   #chatPanel {
     flex: 1;
@@ -158,17 +247,20 @@
     flex-direction: column;
   }
   #chatHeader {
-    padding: 16px;
-    border-bottom: 1px solid #17212b;
-    color: #fff;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color-2);
+    color: var(--text-bright);
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   #noChatSelected {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #8a99a6;
+    color: var(--text-dim);
   }
   #messages {
     flex: 1;
@@ -182,27 +274,27 @@
     padding: 10px 14px;
     margin-bottom: 8px;
     border-radius: 12px;
-    background: #182533;
-    color: #e1e1e1;
+    background: var(--bubble-other);
+    color: var(--text-main);
     width: fit-content;
     position: relative;
   }
   #messages li.mine {
-    background: #2b5278;
+    background: var(--bubble-mine);
     margin-left: auto;
   }
   #messages li .who {
     font-size: 12px;
-    color: #8a99a6;
+    color: var(--text-dim);
     margin-bottom: 2px;
   }
   #messages li.deleted {
     font-style: italic;
-    color: #8a99a6;
+    color: var(--text-dim);
   }
   .editedTag {
     font-size: 11px;
-    color: #8aa9c4;
+    color: var(--tick);
     margin-left: 6px;
   }
   .msgActions {
@@ -211,7 +303,7 @@
     top: -14px;
     right: 4px;
     gap: 4px;
-    background: #0e1621;
+    background: var(--bg-main);
     border-radius: 8px;
     padding: 2px 4px;
   }
@@ -229,8 +321,8 @@
     padding: 6px 8px;
     border-radius: 6px;
     border: none;
-    background: #0e1621;
-    color: #fff;
+    background: var(--bg-main);
+    color: var(--text-bright);
     font-size: 14px;
     font-family: inherit;
   }
@@ -242,20 +334,20 @@
     cursor: pointer;
     font-size: 12px;
   }
-  .editSave { background: #2ea6ff; color: #fff; }
-  .editCancel { background: #2b3a4a; color: #fff; }
+  .editSave { background: var(--accent); color: #fff; }
+  .editCancel { background: var(--bg-input); color: var(--text-bright); }
   #form {
     display: flex;
     padding: 12px;
-    border-top: 1px solid #17212b;
+    border-top: 1px solid var(--border-color-2);
   }
   #input {
     flex: 1;
     padding: 12px;
     border-radius: 8px;
     border: none;
-    background: #182533;
-    color: #fff;
+    background: var(--bg-input);
+    color: var(--text-bright);
     font-size: 15px;
   }
   #form button {
@@ -263,7 +355,7 @@
     padding: 0 20px;
     border: none;
     border-radius: 8px;
-    background: #2ea6ff;
+    background: var(--accent);
     color: #fff;
     cursor: pointer;
   }
@@ -273,25 +365,25 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: var(--overlay);
     align-items: center;
     justify-content: center;
   }
   #modalOverlay.show { display: flex; }
   #modalBox {
-    background: #17212b;
+    background: var(--bg-panel);
     padding: 24px;
     border-radius: 12px;
     width: 280px;
   }
-  #modalBox h3 { margin-top: 0; color: #fff; }
+  #modalBox h3 { margin-top: 0; color: var(--text-bright); }
   #modalBox input {
     width: 100%;
     padding: 10px;
     border-radius: 8px;
     border: 1px solid #2b3a4a;
-    background: #0e1621;
-    color: #fff;
+    background: var(--bg-main);
+    color: var(--text-bright);
   }
   #modalBox .row { display: flex; gap: 10px; margin-top: 14px; }
   #modalBox button {
@@ -301,9 +393,9 @@
     border-radius: 8px;
     cursor: pointer;
   }
-  #modalCancel { background: #2b3a4a; color: #fff; }
-  #modalStart { background: #2ea6ff; color: #fff; }
-  #modalError { color: #ff6b6b; font-size: 13px; min-height: 16px; }
+  #modalCancel { background: var(--bg-input); color: var(--text-bright); }
+  #modalStart { background: var(--accent); color: #fff; }
+  #modalError { color: var(--danger); font-size: 13px; min-height: 16px; }
 </style>
 </head>
 <body>
@@ -322,9 +414,16 @@
 <div id="app">
   <div id="sidebar">
     <div id="sidebarHeader">
-      <b id="myName"></b>
+      <div class="myInfo">
+        <span class="avatarWrap" style="position:relative;display:inline-block;">
+          <div id="myAvatar" class="avatar" style="width:36px;height:36px;font-size:15px;"></div>
+          <span class="onlineDot"></span>
+        </span>
+        <b id="myName"></b>
+      </div>
       <div>
         <button id="newChatBtn" title="Новий чат">+</button>
+        <button id="themeBtn" title="Перемкнути тему">🌙</button>
         <button id="logoutBtn" title="Вийти">⏻</button>
       </div>
     </div>
@@ -334,7 +433,16 @@
   <div id="chatPanel">
     <div id="noChatSelected">Виберіть чат зліва або почніть новий</div>
     <div id="activeChat" style="display:none; flex:1; display:flex; flex-direction:column;">
-      <div id="chatHeader"></div>
+      <div id="chatHeader">
+        <span id="chatHeaderAvatarWrap" class="avatarWrap" style="position:relative;display:inline-block;">
+          <div id="chatHeaderAvatar" class="avatar" style="width:34px;height:34px;font-size:14px;"></div>
+          <span class="onlineDot"></span>
+        </span>
+        <div style="display:flex;flex-direction:column;">
+          <span id="chatHeaderName"></span>
+          <span id="chatHeaderStatus" class="chatHeaderStatus"></span>
+        </div>
+      </div>
       <ul id="messages"></ul>
       <form id="form">
         <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
@@ -364,6 +472,40 @@
   let currentPartner = '';
   let isRegisterMode = false;
   let authToken = localStorage.getItem('authToken') || '';
+
+  // --- Аватарки: кольоровий кружок з першою літерою юзернейму ---
+  const AVATAR_COLORS = ['#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', '#aed581', '#ffb74d', '#ff8a65', '#a1887f'];
+
+  function avatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  }
+
+  function fillAvatar(el, name) {
+    if (!name) { el.textContent = '?'; el.style.background = '#555'; return; }
+    el.textContent = name.charAt(0).toUpperCase();
+    el.style.background = avatarColor(name.toLowerCase());
+  }
+
+  // --- Тема: темна/світла, зберігається в localStorage ---
+  const themeBtn = document.getElementById('themeBtn');
+  function applyTheme(theme) {
+    document.body.classList.toggle('light', theme === 'light');
+    themeBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+  }
+  let currentTheme = localStorage.getItem('theme') || 'dark';
+  applyTheme(currentTheme);
+  themeBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', currentTheme);
+    applyTheme(currentTheme);
+  });
+
+  // --- Онлайн-статус та "друкує..." ---
+  let onlineSet = new Set();
+  let typingState = {}; // room -> username, хто зараз друкує в цій кімнаті
+  let chatsCache = [];
 
   // Якщо є збережений токен — пробуємо автоматично залогінитись
   socket.on('connect', () => {
@@ -431,9 +573,13 @@
   function enterApp(username) {
     myUsername = username;
     document.getElementById('myName').textContent = '@' + username;
+    fillAvatar(document.getElementById('myAvatar'), username);
     authDiv.style.display = 'none';
     appDiv.classList.add('show');
-    loadChats();
+    socket.emit('get online users', null, (list) => {
+      onlineSet = new Set((list || []).map((u) => u.toLowerCase()));
+      loadChats();
+    });
   }
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -453,28 +599,54 @@
 
   function loadChats() {
     socket.emit('get chats', null, (chats) => {
-      chatListDiv.innerHTML = '';
-      if (chats.length === 0) {
-        chatListDiv.innerHTML = '<div id="emptyList">Поки немає чатів. Натисни "+", щоб почати.</div>';
-        return;
-      }
-      chats.forEach((chat) => {
-        const div = document.createElement('div');
-        div.className = 'chatItem' + (chat.unread > 0 ? ' hasUnread' : '');
-        div.dataset.room = chat.room;
-        const prefix = chat.lastUser === myUsername ? 'Ви: ' : '';
-        const badge = chat.unread > 0 ? `<span class="unreadBadge">${chat.unread > 99 ? '99+' : chat.unread}</span>` : '';
-        div.innerHTML = `
-          <div class="meta">
-            <span class="name">@${escapeHtml(chat.partner)}</span>
-            ${badge}
-          </div>
-          <span class="preview">${prefix}${escapeHtml(chat.lastText)}</span>
-        `;
-        div.addEventListener('click', () => openChat(chat.room, chat.partner));
-        if (chat.room === currentRoom) div.classList.add('active');
-        chatListDiv.appendChild(div);
-      });
+      chatsCache = chats;
+      renderChatList();
+    });
+  }
+
+  function renderChatList() {
+    chatListDiv.innerHTML = '';
+    if (chatsCache.length === 0) {
+      chatListDiv.innerHTML = '<div id="emptyList">Поки немає чатів. Натисни "+", щоб почати.</div>';
+      return;
+    }
+    chatsCache.forEach((chat) => {
+      const div = document.createElement('div');
+      div.className = 'chatItem' + (chat.unread > 0 ? ' hasUnread' : '');
+      div.dataset.room = chat.room;
+      const isTyping = typingState[chat.room];
+      const prefix = chat.lastUser === myUsername ? 'Ви: ' : '';
+      const badge = chat.unread > 0 ? `<span class="unreadBadge">${chat.unread > 99 ? '99+' : chat.unread}</span>` : '';
+
+      const avatarWrap = document.createElement('span');
+      avatarWrap.className = 'avatarWrap' + (onlineSet.has(chat.partner.toLowerCase()) ? ' online' : '');
+      avatarWrap.style.cssText = 'position:relative;display:inline-block;';
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'avatar';
+      avatarDiv.style.cssText = 'width:44px;height:44px;font-size:17px;';
+      fillAvatar(avatarDiv, chat.partner);
+      const dot = document.createElement('span');
+      dot.className = 'onlineDot';
+      avatarWrap.appendChild(avatarDiv);
+      avatarWrap.appendChild(dot);
+      div.appendChild(avatarWrap);
+
+      const body = document.createElement('div');
+      body.className = 'chatItemBody';
+      const previewHtml = isTyping
+        ? `<span class="preview typing">друкує...</span>`
+        : `<span class="preview">${prefix}${escapeHtml(chat.lastText)}</span>`;
+      body.innerHTML = `
+        <div class="meta">
+          <span class="name">@${escapeHtml(chat.partner)}</span>
+          ${badge}
+        </div>
+        ${previewHtml}
+      `;
+      div.appendChild(body);
+      div.addEventListener('click', () => openChat(chat.room, chat.partner));
+      if (chat.room === currentRoom) div.classList.add('active');
+      chatListDiv.appendChild(div);
     });
   }
 
@@ -515,15 +687,37 @@
   // --- Active chat ---
   const noChatSelected = document.getElementById('noChatSelected');
   const activeChat = document.getElementById('activeChat');
-  const chatHeader = document.getElementById('chatHeader');
+  const chatHeaderName = document.getElementById('chatHeaderName');
+  const chatHeaderAvatar = document.getElementById('chatHeaderAvatar');
+  const chatHeaderAvatarWrap = document.getElementById('chatHeaderAvatarWrap');
+  const chatHeaderStatus = document.getElementById('chatHeaderStatus');
   const messages = document.getElementById('messages');
   const form = document.getElementById('form');
   const input = document.getElementById('input');
 
+  function updateChatHeaderStatus() {
+    if (!currentPartner) return;
+    const isTyping = typingState[currentRoom];
+    const isOnline = onlineSet.has(currentPartner.toLowerCase());
+    chatHeaderAvatarWrap.classList.toggle('online', isOnline);
+    if (isTyping) {
+      chatHeaderStatus.textContent = 'друкує...';
+      chatHeaderStatus.className = 'chatHeaderStatus typing';
+    } else if (isOnline) {
+      chatHeaderStatus.textContent = 'онлайн';
+      chatHeaderStatus.className = 'chatHeaderStatus online';
+    } else {
+      chatHeaderStatus.textContent = 'офлайн';
+      chatHeaderStatus.className = 'chatHeaderStatus';
+    }
+  }
+
   function openChat(room, partner) {
     currentRoom = room;
     currentPartner = partner;
-    chatHeader.textContent = '@' + partner;
+    chatHeaderName.textContent = '@' + partner;
+    fillAvatar(chatHeaderAvatar, partner);
+    updateChatHeaderStatus();
     messages.innerHTML = '';
     noChatSelected.style.display = 'none';
     activeChat.style.display = 'flex';
@@ -535,11 +729,32 @@
     socket.emit('join room', room);
   }
 
+  let typingTimeout = null;
+  let isCurrentlyTyping = false;
+
+  input.addEventListener('input', () => {
+    if (!currentRoom) return;
+    if (!isCurrentlyTyping) {
+      isCurrentlyTyping = true;
+      socket.emit('typing', { room: currentRoom });
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      isCurrentlyTyping = false;
+      socket.emit('stop typing', { room: currentRoom });
+    }, 2000);
+  });
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (input.value.trim() && currentRoom) {
       socket.emit('chat message', { room: currentRoom, text: input.value.trim() });
       input.value = '';
+      clearTimeout(typingTimeout);
+      if (isCurrentlyTyping) {
+        isCurrentlyTyping = false;
+        socket.emit('stop typing', { room: currentRoom });
+      }
     }
   });
 
@@ -664,6 +879,31 @@
       }
     });
     loadChats();
+  });
+
+  // --- Онлайн/офлайн статус співрозмовника ---
+  socket.on('user status', (data) => {
+    const key = (data.user || data.username || '').toLowerCase();
+    if (!key) return;
+    if (data.online) onlineSet.add(key);
+    else onlineSet.delete(key);
+    renderChatList();
+    if (currentPartner && currentPartner.toLowerCase() === key) {
+      updateChatHeaderStatus();
+    }
+  });
+
+  // --- Хтось друкує ---
+  socket.on('typing', (data) => {
+    typingState[data.room] = data.user;
+    renderChatList();
+    if (data.room === currentRoom) updateChatHeaderStatus();
+  });
+
+  socket.on('stop typing', (data) => {
+    delete typingState[data.room];
+    renderChatList();
+    if (data.room === currentRoom) updateChatHeaderStatus();
   });
 </script>
 </body>
