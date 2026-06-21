@@ -35,6 +35,38 @@ function requireAuth(socket, callback) {
   return true;
 }
 
+// Позначає всі чужі непрочитані повідомлення в кімнаті прочитаними і сповіщає кімнату
+async function markRoomRead(socket, room) {
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ read: true })
+    .eq('room', room)
+    .neq('username', socket.username)
+    .eq('read', false)
+    .select('id');
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+  if (data && data.length > 0) {
+    io.to(room).emit('messages read', { room, ids: data.map((r) => r.id) });
+  }
+}
+
+// Чи зараз хтось із кімнати (окрім автора) реально дивиться саме цю кімнату
+function isPartnerViewingRoom(room, authorUsername) {
+  const roomSet = io.sockets.adapter.rooms.get(room);
+  if (!roomSet) return false;
+  for (const socketId of roomSet) {
+    const s = io.sockets.sockets.get(socketId);
+    if (s && s.username && s.username !== authorUsername && s.currentRoom === room) {
+      return true;
+    }
+  }
+  return false;
+}
+
 io.on('connection', (socket) => {
   console.log('Хтось приєднався до сервера');
 
@@ -127,7 +159,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('messages')
-      .select('room, username, text, created_at')
+      .select('room, username, text, created_at, read, deleted')
       .or(`room.ilike.${username.toLowerCase()}_%,room.ilike.%_${username.toLowerCase()}`)
       .order('created_at', { ascending: false });
 
@@ -136,21 +168,28 @@ io.on('connection', (socket) => {
       return callback([]);
     }
 
-    const seen = new Map();
+    const chats = new Map();
     for (const row of data) {
-      if (!seen.has(row.room)) {
+      let chat = chats.get(row.room);
+      if (!chat) {
         const parts = row.room.split('_');
         const partner = parts[0] === username.toLowerCase() ? parts[1] : parts[0];
-        seen.set(row.room, {
+        chat = {
           room: row.room,
           partner,
-          lastText: row.text,
+          lastText: row.deleted ? 'Повідомлення видалено' : row.text,
           lastUser: row.username,
-        });
+          unread: 0,
+        };
+        chats.set(row.room, chat);
+      }
+      // Непрочитані = повідомлення не від мене і ще не прочитані
+      if (row.username !== username && !row.read) {
+        chat.unread += 1;
       }
     }
 
-    callback(Array.from(seen.values()));
+    callback(Array.from(chats.values()));
   });
 
   // --- Почати новий чат ---
@@ -188,12 +227,15 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (socket.currentRoom && socket.currentRoom !== room) {
+      socket.leave(socket.currentRoom);
+    }
     socket.join(room);
     socket.currentRoom = room;
 
     supabase
       .from('messages')
-      .select('username, text')
+      .select('id, username, text, read, edited, deleted')
       .eq('room', room)
       .order('id', { ascending: true })
       .then(({ data, error }) => {
@@ -202,26 +244,121 @@ io.on('connection', (socket) => {
           return;
         }
         data.forEach((row) => {
-          socket.emit('chat message', { user: row.username, text: row.text });
+          socket.emit('chat message', {
+            id: row.id,
+            user: row.username,
+            text: row.deleted ? '' : row.text,
+            read: row.read,
+            edited: row.edited,
+            deleted: row.deleted,
+          });
         });
+        markRoomRead(socket, room);
       });
   });
 
-  socket.on('chat message', (data) => {
+  socket.on('chat message', async (data) => {
     if (!requireAuth(socket)) return;
     // Кімната має бути та, в яку юзер реально приєднався — і він має бути її учасником
     if (data.room !== socket.currentRoom || !socket.rooms.has(data.room)) return;
 
-    const payload = { room: data.room, username: socket.username, text: (data.text || '').trim() };
-    if (!payload.text) return;
+    const text = (data.text || '').trim();
+    if (!text) return;
 
-    supabase
+    const partnerIsViewing = isPartnerViewingRoom(data.room, socket.username);
+
+    const { data: inserted, error } = await supabase
       .from('messages')
-      .insert(payload)
-      .then(({ error }) => {
-        if (error) console.error(error);
-      });
-    io.to(data.room).emit('chat message', { user: socket.username, text: payload.text });
+      .insert({ room: data.room, username: socket.username, text, read: partnerIsViewing })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    io.to(data.room).emit('chat message', {
+      id: inserted.id,
+      user: socket.username,
+      text,
+      read: partnerIsViewing,
+    });
+  });
+
+  // --- Редагування повідомлення ---
+  socket.on('edit message', async (data, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+    const room = data && data.room;
+    const id = data && data.id;
+    const text = (data && data.text || '').trim();
+
+    if (room !== socket.currentRoom || !socket.rooms.has(room)) {
+      return cb({ success: false, error: 'Невірна кімната' });
+    }
+    if (!text) return cb({ success: false, error: 'Текст не може бути порожнім' });
+
+    // Перевіряємо, що повідомлення належить цьому юзеру і не видалене
+    const { data: existing, error: fetchErr } = await supabase
+      .from('messages')
+      .select('id, username, deleted')
+      .eq('id', id)
+      .eq('room', room)
+      .maybeSingle();
+
+    if (fetchErr || !existing || existing.username !== socket.username || existing.deleted) {
+      return cb({ success: false, error: 'Неможливо редагувати це повідомлення' });
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ text, edited: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error(error);
+      return cb({ success: false, error: 'Помилка редагування' });
+    }
+
+    io.to(room).emit('message edited', { room, id, text });
+    cb({ success: true });
+  });
+
+  // --- Видалення повідомлення ---
+  socket.on('delete message', async (data, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+    const room = data && data.room;
+    const id = data && data.id;
+
+    if (room !== socket.currentRoom || !socket.rooms.has(room)) {
+      return cb({ success: false, error: 'Невірна кімната' });
+    }
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('messages')
+      .select('id, username')
+      .eq('id', id)
+      .eq('room', room)
+      .maybeSingle();
+
+    if (fetchErr || !existing || existing.username !== socket.username) {
+      return cb({ success: false, error: 'Неможливо видалити це повідомлення' });
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ deleted: true, text: '' })
+      .eq('id', id);
+
+    if (error) {
+      console.error(error);
+      return cb({ success: false, error: 'Помилка видалення' });
+    }
+
+    io.to(room).emit('message deleted', { room, id });
+    cb({ success: true });
   });
 
   socket.on('disconnect', () => {

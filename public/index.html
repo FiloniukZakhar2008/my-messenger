@@ -123,6 +123,35 @@
   }
   #emptyList { padding: 20px; color: #8a99a6; text-align: center; font-size: 14px; }
 
+  .chatItem { position: relative; }
+  .chatItem .meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .unreadBadge {
+    background: #2ea6ff;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
+  .chatItem.hasUnread .name { color: #fff; }
+  .chatItem.hasUnread .preview { color: #cfd8e0; }
+
+  .tick {
+    font-size: 12px;
+    margin-left: 4px;
+    color: #8aa9c4;
+  }
+  .tick.read { color: #6fd0ff; }
+
   #chatPanel {
     flex: 1;
     display: flex;
@@ -156,6 +185,7 @@
     background: #182533;
     color: #e1e1e1;
     width: fit-content;
+    position: relative;
   }
   #messages li.mine {
     background: #2b5278;
@@ -166,6 +196,54 @@
     color: #8a99a6;
     margin-bottom: 2px;
   }
+  #messages li.deleted {
+    font-style: italic;
+    color: #8a99a6;
+  }
+  .editedTag {
+    font-size: 11px;
+    color: #8aa9c4;
+    margin-left: 6px;
+  }
+  .msgActions {
+    display: none;
+    position: absolute;
+    top: -14px;
+    right: 4px;
+    gap: 4px;
+    background: #0e1621;
+    border-radius: 8px;
+    padding: 2px 4px;
+  }
+  #messages li.mine:not(.deleted):hover .msgActions { display: flex; }
+  .msgActions span {
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+  }
+  .msgActions span:hover { opacity: 0.7; }
+  .msgText { white-space: pre-wrap; word-break: break-word; }
+  .editInput {
+    width: 100%;
+    min-width: 180px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: none;
+    background: #0e1621;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .editRow { display: flex; gap: 6px; margin-top: 6px; }
+  .editRow button {
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .editSave { background: #2ea6ff; color: #fff; }
+  .editCancel { background: #2b3a4a; color: #fff; }
   #form {
     display: flex;
     padding: 12px;
@@ -382,10 +460,17 @@
       }
       chats.forEach((chat) => {
         const div = document.createElement('div');
-        div.className = 'chatItem';
+        div.className = 'chatItem' + (chat.unread > 0 ? ' hasUnread' : '');
         div.dataset.room = chat.room;
         const prefix = chat.lastUser === myUsername ? 'Ви: ' : '';
-        div.innerHTML = `<span class="name">@${escapeHtml(chat.partner)}</span><span class="preview">${prefix}${escapeHtml(chat.lastText)}</span>`;
+        const badge = chat.unread > 0 ? `<span class="unreadBadge">${chat.unread > 99 ? '99+' : chat.unread}</span>` : '';
+        div.innerHTML = `
+          <div class="meta">
+            <span class="name">@${escapeHtml(chat.partner)}</span>
+            ${badge}
+          </div>
+          <span class="preview">${prefix}${escapeHtml(chat.lastText)}</span>
+        `;
         div.addEventListener('click', () => openChat(chat.room, chat.partner));
         if (chat.room === currentRoom) div.classList.add('active');
         chatListDiv.appendChild(div);
@@ -458,12 +543,126 @@
     }
   });
 
-  socket.on('chat message', (data) => {
+  function renderMessage(data) {
     const li = document.createElement('li');
     li.className = data.user === myUsername ? 'mine' : '';
-    li.innerHTML = `<div class="who">${escapeHtml(data.user)}</div>${escapeHtml(data.text)}`;
+    if (data.id) li.dataset.id = data.id;
+    fillMessageContent(li, data);
     messages.appendChild(li);
     messages.scrollTop = messages.scrollHeight;
+  }
+
+  function fillMessageContent(li, data) {
+    const isMine = data.user === myUsername;
+    if (data.deleted) {
+      li.classList.add('deleted');
+      li.innerHTML = `<div class="who">${escapeHtml(data.user)}</div>Повідомлення видалено`;
+      return;
+    }
+    li.classList.remove('deleted');
+    li.dataset.text = data.text;
+    const tick = isMine
+      ? `<span class="tick ${data.read ? 'read' : ''}">${data.read ? '✓✓' : '✓'}</span>`
+      : '';
+    const editedTag = data.edited ? '<span class="editedTag">(ред.)</span>' : '';
+    const actions = isMine
+      ? `<span class="msgActions"><span class="editBtn" title="Редагувати">✎</span><span class="delBtn" title="Видалити">🗑</span></span>`
+      : '';
+    li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div><span class="msgText">${escapeHtml(data.text)}</span>${editedTag}${tick}`;
+
+    if (isMine) {
+      const editBtn = li.querySelector('.editBtn');
+      const delBtn = li.querySelector('.delBtn');
+      editBtn.addEventListener('click', () => startEdit(li, data));
+      delBtn.addEventListener('click', () => deleteMessage(li, data));
+    }
+  }
+
+  function startEdit(li, data) {
+    const id = li.dataset.id;
+    li.innerHTML = `
+      <div class="who">${escapeHtml(data.user)}</div>
+      <input class="editInput" value="${escapeHtml(li.dataset.text)}" />
+      <div class="editRow">
+        <button class="editSave">Зберегти</button>
+        <button class="editCancel">Скасувати</button>
+      </div>
+    `;
+    const editInput = li.querySelector('.editInput');
+    editInput.focus();
+    editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+
+    const cancel = () => fillMessageContent(li, data);
+    li.querySelector('.editCancel').addEventListener('click', cancel);
+
+    const save = () => {
+      const newText = editInput.value.trim();
+      if (!newText) return;
+      socket.emit('edit message', { room: currentRoom, id, text: newText }, (res) => {
+        if (!res || !res.success) {
+          alert((res && res.error) || 'Не вдалось зберегти');
+          fillMessageContent(li, data);
+          return;
+        }
+        // Локальне оновлення відбудеться через подію 'message edited'
+      });
+    };
+    li.querySelector('.editSave').addEventListener('click', save);
+    editInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      if (e.key === 'Escape') cancel();
+    });
+  }
+
+  function deleteMessage(li, data) {
+    if (!confirm('Видалити це повідомлення?')) return;
+    const id = li.dataset.id;
+    socket.emit('delete message', { room: currentRoom, id }, (res) => {
+      if (!res || !res.success) {
+        alert((res && res.error) || 'Не вдалось видалити');
+      }
+      // Видалення UI відбудеться через подію 'message deleted'
+    });
+  }
+
+  socket.on('chat message', (data) => {
+    renderMessage(data);
+    loadChats();
+  });
+
+  socket.on('message edited', (data) => {
+    if (data.room !== currentRoom) { loadChats(); return; }
+    const li = messages.querySelector(`li[data-id="${data.id}"]`);
+    if (li) {
+      const isMine = li.classList.contains('mine');
+      fillMessageContent(li, { user: isMine ? myUsername : currentPartner, text: data.text, edited: true, read: li.querySelector('.tick.read') !== null, deleted: false });
+    }
+    loadChats();
+  });
+
+  socket.on('message deleted', (data) => {
+    if (data.room !== currentRoom) { loadChats(); return; }
+    const li = messages.querySelector(`li[data-id="${data.id}"]`);
+    if (li) {
+      const isMine = li.classList.contains('mine');
+      fillMessageContent(li, { user: isMine ? myUsername : currentPartner, deleted: true });
+    }
+    loadChats();
+  });
+
+  // Співрозмовник прочитав наші повідомлення — оновлюємо галочки на ✓✓
+  socket.on('messages read', (data) => {
+    if (data.room !== currentRoom) return;
+    (data.ids || []).forEach((id) => {
+      const li = messages.querySelector(`li[data-id="${id}"]`);
+      if (li) {
+        const t = li.querySelector('.tick');
+        if (t) {
+          t.textContent = '✓✓';
+          t.classList.add('read');
+        }
+      }
+    });
     loadChats();
   });
 </script>
