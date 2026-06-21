@@ -369,6 +369,59 @@
   #chatList::-webkit-scrollbar-thumb { background: var(--bubble-other-border); border-radius: 8px; }
   #chatList::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
+  /* ===== Шпалери чату ===== */
+  #messages { background-color: transparent; background-position: center; }
+  #messages.wallpaper-default { background: none; }
+  #messages.wallpaper-midnight, .wallpaperSwatch.wallpaper-midnight { background: linear-gradient(160deg, #0f2027, #203a43, #2c5364); }
+  #messages.wallpaper-sunset, .wallpaperSwatch.wallpaper-sunset { background: linear-gradient(160deg, #2d1b3d, #6a3b5c, #b8657a); }
+  #messages.wallpaper-forest, .wallpaperSwatch.wallpaper-forest { background: linear-gradient(160deg, #0f1f17, #1f3a2c, #2f5742); }
+  #messages.wallpaper-ocean, .wallpaperSwatch.wallpaper-ocean { background: linear-gradient(160deg, #03132e, #0a3d62, #2a82c4); }
+  #messages.wallpaper-rose, .wallpaperSwatch.wallpaper-rose { background: linear-gradient(160deg, #2a0e1f, #5c1a3d, #b3486a); }
+  #messages.wallpaper-sand, .wallpaperSwatch.wallpaper-sand { background: linear-gradient(160deg, #3a2c1d, #6b4f33, #c79a5e); }
+  #messages.wallpaper-dots,
+  .wallpaperSwatch.wallpaper-dots {
+    background-color: var(--bg-main);
+    background-image: radial-gradient(rgba(255,255,255,0.10) 1.5px, transparent 1.5px);
+    background-size: 20px 20px;
+  }
+  #messages.wallpaper-grid,
+  .wallpaperSwatch.wallpaper-grid {
+    background-color: var(--bg-main);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .wallpaperSwatch.wallpaper-default { background: var(--bg-input); }
+
+  .wallpaperSwatches {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .wallpaperSwatch {
+    height: 52px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    background-position: center;
+    background-size: cover;
+  }
+  .wallpaperSwatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(85,245,200,0.25); }
+  .wallpaperSwatch span {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    font-size: 10px;
+    text-align: center;
+    color: #fff;
+    background: rgba(0,0,0,0.45);
+    border-radius: 0 0 10px 10px;
+    padding: 2px 0;
+  }
+
   @keyframes bubbleIn {
     from { opacity: 0; transform: translateY(10px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -413,10 +466,23 @@
     font-style: italic;
     color: var(--text-dim);
   }
+  .msgFooter {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: 4px;
+    height: 14px;
+  }
   .editedTag {
     font-size: 11px;
     color: var(--tick);
-    margin-left: 6px;
+    font-style: italic;
+  }
+  .msgTime {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
   }
   .msgActions {
     display: none;
@@ -650,6 +716,8 @@
     padding: 24px;
     border-radius: 12px;
     width: min(360px, calc(100vw - 36px));
+    max-height: min(560px, calc(100vh - 60px));
+    overflow-y: auto;
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-soft);
   }
@@ -893,6 +961,10 @@
         <button type="button" data-theme-choice="light">Світла</button>
       </div>
     </div>
+    <div class="settingsOption" style="display:block;">
+      <span>Фон чату</span>
+      <div id="wallpaperSwatches" class="wallpaperSwatches"></div>
+    </div>
     <div class="settingsOption">
       <span>Сповіщення браузера</span>
       <button type="button" id="notificationBtn">Увімкнути</button>
@@ -985,6 +1057,45 @@
     applyTheme(currentTheme);
   });
   notificationBtn.addEventListener('click', requestNotificationPermission);
+
+  // --- Шпалери чату ---
+  const WALLPAPERS = [
+    { id: 'default', label: 'Стандарт' },
+    { id: 'midnight', label: 'Північ' },
+    { id: 'ocean', label: 'Океан' },
+    { id: 'forest', label: 'Ліс' },
+    { id: 'sunset', label: 'Захід' },
+    { id: 'rose', label: 'Розі' },
+    { id: 'sand', label: 'Пісок' },
+    { id: 'dots', label: 'Крапки' },
+    { id: 'grid', label: 'Сітка' },
+  ];
+  const wallpaperSwatchesEl = document.getElementById('wallpaperSwatches');
+  let currentWallpaper = localStorage.getItem('wallpaper') || 'default';
+
+  function applyWallpaper(id) {
+    const messagesEl = document.getElementById('messages');
+    WALLPAPERS.forEach((w) => messagesEl.classList.remove('wallpaper-' + w.id));
+    messagesEl.classList.add('wallpaper-' + id);
+    wallpaperSwatchesEl.querySelectorAll('.wallpaperSwatch').forEach((el) => {
+      el.classList.toggle('active', el.dataset.wallpaper === id);
+    });
+  }
+
+  WALLPAPERS.forEach((w) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'wallpaperSwatch wallpaper-' + w.id;
+    btn.dataset.wallpaper = w.id;
+    btn.innerHTML = `<span>${w.label}</span>`;
+    btn.addEventListener('click', () => {
+      currentWallpaper = w.id;
+      localStorage.setItem('wallpaper', currentWallpaper);
+      applyWallpaper(currentWallpaper);
+    });
+    wallpaperSwatchesEl.appendChild(btn);
+  });
+  applyWallpaper(currentWallpaper);
 
   // --- Профіль: локальні налаштування поточного пристрою ---
   const profileBtn = document.getElementById('profileBtn');
@@ -1284,6 +1395,12 @@
     const m = Math.floor(total / 60);
     const s = total % 60;
     return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function formatMessageTime(isoString) {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
   }
 
   // --- New chat modal ---
@@ -1616,6 +1733,8 @@
 
   function fillMessageContent(li, data) {
     const isMine = data.user === myUsername;
+    const createdAt = data.createdAt || li.dataset.createdAt || '';
+    if (createdAt) li.dataset.createdAt = createdAt;
     if (data.deleted) {
       li.classList.add('deleted');
       li.innerHTML = `<div class="who">${escapeHtml(data.user)}</div>Повідомлення видалено`;
@@ -1626,7 +1745,9 @@
     const tick = isMine
       ? `<span class="tick ${data.read ? 'read' : ''}">${data.read ? '✓✓' : '✓'}</span>`
       : '';
-    const editedTag = data.edited ? '<span class="editedTag">(ред.)</span>' : '';
+    const editedTag = data.edited ? '<span class="editedTag">ред.</span>' : '';
+    const timeTag = createdAt ? `<span class="msgTime">${formatMessageTime(createdAt)}</span>` : '';
+    const footer = `<div class="msgFooter">${editedTag}${timeTag}${tick}</div>`;
     const isVoice = data.type === 'voice' && data.mediaUrl;
     const actions = isMine && !isVoice
       ? `<span class="msgActions"><span class="editBtn" title="Редагувати">✎</span><span class="delBtn" title="Видалити">🗑</span></span>`
@@ -1653,7 +1774,7 @@
       bodyHtml = `<span class="msgText">${escapeHtml(data.text)}</span>`;
     }
 
-    li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div>${bodyHtml}${editedTag}${tick}`;
+    li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div>${bodyHtml}${footer}`;
 
     if (isVoice) setupVoicePlayer(li);
 

@@ -64,7 +64,7 @@ async function broadcastVoiceMessage(room, username, mediaUrl, duration, partner
       duration,
       read: partnerIsViewing,
     })
-    .select('id')
+    .select('id, created_at')
     .single();
 
   if (error) throw error;
@@ -76,6 +76,7 @@ async function broadcastVoiceMessage(room, username, mediaUrl, duration, partner
     mediaUrl,
     duration,
     read: partnerIsViewing,
+    createdAt: inserted.created_at,
   };
 
   io.to(room).emit('chat message', payload);
@@ -406,7 +407,7 @@ io.on('connection', (socket) => {
 
     supabase
       .from('messages')
-      .select('id, username, text, read, edited, deleted, type, media_url, duration')
+      .select('id, username, text, read, edited, deleted, type, media_url, duration, created_at')
       .eq('room', room)
       .order('id', { ascending: true })
       .then(({ data, error }) => {
@@ -425,6 +426,7 @@ io.on('connection', (socket) => {
             read: row.read,
             edited: row.edited,
             deleted: row.deleted,
+            createdAt: row.created_at,
           });
         });
         markRoomRead(socket, room);
@@ -444,7 +446,7 @@ io.on('connection', (socket) => {
     const { data: inserted, error } = await supabase
       .from('messages')
       .insert({ room: data.room, username: socket.username, text, read: partnerIsViewing })
-      .select('id')
+      .select('id, created_at')
       .single();
 
     if (error) {
@@ -458,6 +460,7 @@ io.on('connection', (socket) => {
       type: 'text',
       text,
       read: partnerIsViewing,
+      createdAt: inserted.created_at,
     });
 
     const partnerUsername = getRoomPartner(data.room, socket.username);
