@@ -186,6 +186,23 @@ function requireAuth(socket, callback) {
   return true;
 }
 
+// Безпечно тягне підпис/колір аватарки. Якщо колонок bio/avatar_color ще
+// немає в базі (наприклад, не виконана SQL-міграція) — не ламає логін/чати,
+// просто повертає пусті значення.
+async function fetchPublicProfile(username) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('bio, avatar_color')
+      .ilike('username', username)
+      .maybeSingle();
+    if (error || !data) return { bio: '', avatarColor: '' };
+    return { bio: data.bio || '', avatarColor: data.avatar_color || '' };
+  } catch (_err) {
+    return { bio: '', avatarColor: '' };
+  }
+}
+
 // Позначає всі чужі непрочитані повідомлення в кімнаті прочитаними і сповіщає кімнату
 async function markRoomRead(socket, room) {
   const { data, error } = await supabase
@@ -267,7 +284,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, password, bio, avatar_color')
+      .select('id, username, password')
       .ilike('username', username)
       .maybeSingle();
 
@@ -285,12 +302,14 @@ io.on('connection', (socket) => {
 
     socket.username = data.username;
     markOnline(socket.username);
+
+    const profile = await fetchPublicProfile(data.username);
     callback({
       success: true,
       username: data.username,
       token,
-      bio: data.bio || '',
-      avatarColor: data.avatar_color || '',
+      bio: profile.bio,
+      avatarColor: profile.avatarColor,
     });
   });
 
@@ -303,17 +322,12 @@ io.on('connection', (socket) => {
     socket.username = username;
     markOnline(username);
 
-    const { data } = await supabase
-      .from('users')
-      .select('bio, avatar_color')
-      .ilike('username', username)
-      .maybeSingle();
-
+    const profile = await fetchPublicProfile(username);
     callback({
       success: true,
       username,
-      bio: (data && data.bio) || '',
-      avatarColor: (data && data.avatar_color) || '',
+      bio: profile.bio,
+      avatarColor: profile.avatarColor,
     });
   });
 
@@ -453,7 +467,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('username, bio, avatar_color')
+      .select('username')
       .ilike('username', partnerUsername)
       .maybeSingle();
 
@@ -462,12 +476,13 @@ io.on('connection', (socket) => {
     }
 
     const room = makeRoomName(socket.username, data.username);
+    const profile = await fetchPublicProfile(data.username);
     callback({
       success: true,
       room,
       partner: data.username,
-      bio: data.bio || '',
-      avatarColor: data.avatar_color || '',
+      bio: profile.bio,
+      avatarColor: profile.avatarColor,
     });
   });
 
