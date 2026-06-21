@@ -21,6 +21,8 @@
     --accent: #55f5c8;
     --accent-hover: #2bd9ac;
     --accent-hot: #ff6f61;
+    --accent-rgb: 85, 245, 200;
+    --accent-hot-rgb: 255, 111, 97;
     --danger: #ff6b6b;
     --bubble-mine: #245c51;
     --bubble-other: #263038;
@@ -47,6 +49,8 @@
     --accent: #00a884;
     --accent-hover: #008f70;
     --accent-hot: #ff6f61;
+    --accent-rgb: 0, 168, 132;
+    --accent-hot-rgb: 255, 111, 97;
     --danger: #e0524f;
     --bubble-mine: #cdeee5;
     --bubble-other: #ffffff;
@@ -58,13 +62,72 @@
     --overlay: rgba(0,0,0,0.3);
     --shadow-soft: 0 18px 45px rgba(80,67,48,0.18);
   }
+
+  /* --- Кольорові палітри (акцент кнопок/чеків/лого), накладаються поверх теми --- */
+  body.palette-classic {
+    --accent: #55f5c8;
+    --accent-hover: #2bd9ac;
+    --accent-hot: #ff6f61;
+    --accent-rgb: 85, 245, 200;
+    --accent-hot-rgb: 255, 111, 97;
+    --tick-read: #55f5c8;
+  }
+  body.palette-ocean {
+    --accent: #4fc3ff;
+    --accent-hover: #2aa3e6;
+    --accent-hot: #3a6dff;
+    --accent-rgb: 79, 195, 255;
+    --accent-hot-rgb: 58, 109, 255;
+    --tick-read: #4fc3ff;
+  }
+  body.palette-violet {
+    --accent: #a78bfa;
+    --accent-hover: #8b5cf6;
+    --accent-hot: #ec4899;
+    --accent-rgb: 167, 139, 250;
+    --accent-hot-rgb: 236, 72, 153;
+    --tick-read: #a78bfa;
+  }
+  body.palette-sunset {
+    --accent: #ffb454;
+    --accent-hover: #ff9d2e;
+    --accent-hot: #ff5277;
+    --accent-rgb: 255, 180, 84;
+    --accent-hot-rgb: 255, 82, 119;
+    --tick-read: #ffb454;
+  }
+  body.palette-rose {
+    --accent: #ff7aa8;
+    --accent-hover: #ff4f8b;
+    --accent-hot: #ffa45c;
+    --accent-rgb: 255, 122, 168;
+    --accent-hot-rgb: 255, 164, 92;
+    --tick-read: #ff7aa8;
+  }
+  body.palette-gold {
+    --accent: #e8c468;
+    --accent-hover: #d4a93b;
+    --accent-hot: #ff8a4c;
+    --accent-rgb: 232, 196, 104;
+    --accent-hot-rgb: 255, 138, 76;
+    --tick-read: #e8c468;
+  }
+  body.palette-graphite {
+    --accent: #9fb4c7;
+    --accent-hover: #7e97ab;
+    --accent-hot: #5c7a91;
+    --accent-rgb: 159, 180, 199;
+    --accent-hot-rgb: 92, 122, 145;
+    --tick-read: #9fb4c7;
+  }
+
   body {
     font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 0;
     height: 100vh;
     background:
-      radial-gradient(circle at 18% 10%, rgba(85,245,200,0.10), transparent 32%),
-      radial-gradient(circle at 88% 14%, rgba(255,111,97,0.10), transparent 30%),
+      radial-gradient(circle at 18% 10%, rgba(var(--accent-rgb),0.10), transparent 32%),
+      radial-gradient(circle at 88% 14%, rgba(var(--accent-hot-rgb),0.10), transparent 30%),
       var(--bg-main);
     color: var(--text-main);
     overflow: hidden;
@@ -266,7 +329,7 @@
   .chatItem:hover { background: var(--bg-hover); }
   .chatItem.active {
     background: var(--bg-active);
-    border-color: rgba(85,245,200,0.24);
+    border-color: rgba(var(--accent-rgb),0.24);
     box-shadow: inset 4px 0 0 var(--accent);
   }
   .chatItem .chatItemBody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -410,8 +473,37 @@
     background-position: center;
     background-size: cover;
   }
-  .wallpaperSwatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(85,245,200,0.25); }
+  .wallpaperSwatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.25); }
   .wallpaperSwatch span {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    font-size: 10px;
+    text-align: center;
+    color: #fff;
+    background: rgba(0,0,0,0.45);
+    border-radius: 0 0 10px 10px;
+    padding: 2px 0;
+  }
+
+  .paletteSwatches {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .paletteSwatch {
+    height: 44px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+  }
+  .paletteSwatch.active {
+    border-color: var(--text-bright);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .paletteSwatch span {
     position: absolute;
     left: 0; right: 0; bottom: 0;
     font-size: 10px;
@@ -451,7 +543,7 @@
   #messages li.mine {
     background: var(--bubble-mine);
     margin-left: auto;
-    border-color: rgba(85,245,200,0.18);
+    border-color: rgba(var(--accent-rgb),0.18);
     box-shadow: inset 4px 0 0 var(--accent);
   }
   body.light #messages li:not(.mine) {
@@ -656,8 +748,8 @@
   }
   .voiceMsg.playing .voicePlayBtn { animation: voicePulse 1.4s ease-in-out infinite; }
   @keyframes voicePulse {
-    0%, 100% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 0 rgba(85,245,200,0.35); }
-    50% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 6px rgba(85,245,200,0); }
+    0%, 100% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 0 rgba(var(--accent-rgb),0.35); }
+    50% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 6px rgba(var(--accent-rgb),0); }
   }
 
   #toastContainer {
@@ -962,6 +1054,10 @@
       </div>
     </div>
     <div class="settingsOption" style="display:block;">
+      <span>Кольорова палітра</span>
+      <div id="paletteSwatches" class="paletteSwatches"></div>
+    </div>
+    <div class="settingsOption" style="display:block;">
       <span>Фон чату</span>
       <div id="wallpaperSwatches" class="wallpaperSwatches"></div>
     </div>
@@ -1096,6 +1192,44 @@
     wallpaperSwatchesEl.appendChild(btn);
   });
   applyWallpaper(currentWallpaper);
+
+  // --- Кольорова палітра (акцент кнопок/чеків/лого) ---
+  const PALETTES = [
+    { id: 'classic',   label: 'Spark',    accent: '#55f5c8', hot: '#ff6f61' },
+    { id: 'ocean',     label: 'Океан',    accent: '#4fc3ff', hot: '#3a6dff' },
+    { id: 'violet',    label: 'Фіолет',   accent: '#a78bfa', hot: '#ec4899' },
+    { id: 'sunset',    label: 'Захід',    accent: '#ffb454', hot: '#ff5277' },
+    { id: 'rose',      label: 'Розі',     accent: '#ff7aa8', hot: '#ffa45c' },
+    { id: 'gold',      label: 'Золото',   accent: '#e8c468', hot: '#ff8a4c' },
+    { id: 'graphite',  label: 'Графіт',   accent: '#9fb4c7', hot: '#5c7a91' },
+  ];
+  const paletteSwatchesEl = document.getElementById('paletteSwatches');
+  let currentPalette = localStorage.getItem('palette') || 'classic';
+
+  function applyPalette(id) {
+    PALETTES.forEach((p) => document.body.classList.remove('palette-' + p.id));
+    document.body.classList.add('palette-' + id);
+    paletteSwatchesEl.querySelectorAll('.paletteSwatch').forEach((el) => {
+      el.classList.toggle('active', el.dataset.palette === id);
+    });
+  }
+
+  PALETTES.forEach((p) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'paletteSwatch';
+    btn.dataset.palette = p.id;
+    btn.style.background = `linear-gradient(135deg, ${p.accent}, ${p.hot})`;
+    btn.title = p.label;
+    btn.innerHTML = `<span>${p.label}</span>`;
+    btn.addEventListener('click', () => {
+      currentPalette = p.id;
+      localStorage.setItem('palette', currentPalette);
+      applyPalette(currentPalette);
+    });
+    paletteSwatchesEl.appendChild(btn);
+  });
+  applyPalette(currentPalette);
 
   // --- Профіль: локальні налаштування поточного пристрою ---
   const profileBtn = document.getElementById('profileBtn');
