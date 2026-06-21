@@ -51,6 +51,22 @@ function makeRoomName(nameA, nameB) {
   return names[0] + '_' + names[1];
 }
 
+function getRoomPartner(room, username) {
+  const currentUser = (username || '').toLowerCase();
+  return (room || '').split('_').find((name) => name !== currentUser) || '';
+}
+
+function emitToUser(username, event, payload) {
+  const target = (username || '').toLowerCase();
+  if (!target) return;
+
+  for (const s of io.sockets.sockets.values()) {
+    if (s.username && s.username.toLowerCase() === target) {
+      s.emit(event, payload);
+    }
+  }
+}
+
 function requireAuth(socket, callback) {
   if (!socket.username) {
     if (callback) callback({ success: false, error: 'Сесія недійсна, увійди знову' });
@@ -328,6 +344,14 @@ io.on('connection', (socket) => {
       user: socket.username,
       text,
       read: partnerIsViewing,
+    });
+
+    const partnerUsername = getRoomPartner(data.room, socket.username);
+    emitToUser(partnerUsername, 'new message notification', {
+      id: inserted.id,
+      room: data.room,
+      from: socket.username,
+      text,
     });
   });
 

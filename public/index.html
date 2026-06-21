@@ -360,6 +360,41 @@
     cursor: pointer;
   }
 
+  #toastContainer {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .toast {
+    width: min(320px, calc(100vw - 36px));
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color-2);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.28);
+    color: var(--text-main);
+    padding: 12px 14px;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .toast strong {
+    display: block;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+  .toast span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-dim-2);
+    font-size: 13px;
+  }
+
   /* --- New chat modal --- */
   #modalOverlay {
     display: none;
@@ -464,6 +499,8 @@
   </div>
 </div>
 
+<div id="toastContainer"></div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
@@ -506,6 +543,56 @@
   let onlineSet = new Set();
   let typingState = {}; // room -> username, хто зараз друкує в цій кімнаті
   let chatsCache = [];
+  const baseTitle = document.title;
+  let unreadTitleCount = 0;
+
+  function requestNotificationPermission() {
+    if (!('Notification' in window) || Notification.permission !== 'default') return;
+    Notification.requestPermission().catch(() => {});
+  }
+
+  function resetPageTitle() {
+    unreadTitleCount = 0;
+    document.title = baseTitle;
+  }
+
+  function showToastNotification(data) {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+      <strong>@${escapeHtml(data.from)} написав</strong>
+      <span>${escapeHtml(data.text)}</span>
+    `;
+    toast.addEventListener('click', () => {
+      openChat(data.room, data.from);
+      toast.remove();
+      resetPageTitle();
+      window.focus();
+    });
+    toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 6000);
+  }
+
+  function showBrowserNotification(data) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!document.hidden) return;
+
+    const notification = new Notification(`@${data.from} написав`, {
+      body: data.text,
+      tag: data.room,
+    });
+    notification.onclick = () => {
+      window.focus();
+      openChat(data.room, data.from);
+      resetPageTitle();
+      notification.close();
+    };
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resetPageTitle();
+  });
 
   // Якщо є збережений токен — пробуємо автоматично залогінитись
   socket.on('connect', () => {
@@ -572,6 +659,7 @@
 
   function enterApp(username) {
     myUsername = username;
+    requestNotificationPermission();
     document.getElementById('myName').textContent = '@' + username;
     fillAvatar(document.getElementById('myAvatar'), username);
     authDiv.style.display = 'none';
@@ -715,6 +803,7 @@
   function openChat(room, partner) {
     currentRoom = room;
     currentPartner = partner;
+    resetPageTitle();
     chatHeaderName.textContent = '@' + partner;
     fillAvatar(chatHeaderAvatar, partner);
     updateChatHeaderStatus();
@@ -839,6 +928,19 @@
       // Видалення UI відбудеться через подію 'message deleted'
     });
   }
+
+  socket.on('new message notification', (data) => {
+    if (!myUsername || data.from === myUsername) return;
+
+    loadChats();
+    const isOpenAndVisible = data.room === currentRoom && !document.hidden;
+    if (isOpenAndVisible) return;
+
+    unreadTitleCount += 1;
+    document.title = `(${unreadTitleCount}) ${baseTitle}`;
+    showToastNotification(data);
+    showBrowserNotification(data);
+  });
 
   socket.on('chat message', (data) => {
     renderMessage(data);
