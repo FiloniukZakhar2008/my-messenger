@@ -24,6 +24,8 @@
     --danger: #ff6b6b;
     --bubble-mine: #245c51;
     --bubble-other: #222b31;
+    --chat-bg: rgba(18,24,29,0.92);
+    --composer-bg: rgba(17,22,27,0.62);
     --tick: #93b0a8;
     --tick-read: #55f5c8;
     --overlay: rgba(0,0,0,0.5);
@@ -47,6 +49,8 @@
     --danger: #e0524f;
     --bubble-mine: #cdeee5;
     --bubble-other: #fffaf2;
+    --chat-bg: rgba(255,250,242,0.92);
+    --composer-bg: rgba(246,241,232,0.82);
     --tick: #82958f;
     --tick-read: #00a884;
     --overlay: rgba(0,0,0,0.3);
@@ -61,7 +65,9 @@
       radial-gradient(circle at 88% 14%, rgba(255,111,97,0.10), transparent 30%),
       var(--bg-main);
     color: var(--text-main);
+    overflow: hidden;
   }
+  html { height: 100%; overflow: hidden; }
 
   /* --- Avatars --- */
   .avatar {
@@ -150,6 +156,8 @@
     height: 100vh;
     padding: 18px;
     gap: 0;
+    min-height: 0;
+    overflow: hidden;
   }
   #app.show { display: flex; }
 
@@ -163,6 +171,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
   #sidebarHeader {
     padding: 18px 18px 14px;
@@ -301,11 +310,17 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: rgba(18,24,29,0.92);
+    min-height: 0;
+    background: var(--chat-bg);
     border: 1px solid var(--border-color);
     border-radius: 0 24px 24px 0;
     box-shadow: var(--shadow-soft);
     overflow: hidden;
+  }
+  #activeChat {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
   }
   #chatHeader {
     padding: 16px 20px;
@@ -325,13 +340,16 @@
   }
   #messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 24px 26px;
     list-style: none;
     margin: 0;
   }
   #messages li {
     max-width: 60%;
+    overflow-wrap: anywhere;
     padding: 11px 14px;
     margin-bottom: 10px;
     border-radius: 18px;
@@ -401,10 +419,11 @@
   .editSave { background: var(--accent); color: #fff; }
   .editCancel { background: var(--bg-input); color: var(--text-bright); }
   #form {
+    flex-shrink: 0;
     display: flex;
     padding: 14px 18px 18px;
     border-top: 1px solid var(--border-color-2);
-    background: rgba(17,22,27,0.62);
+    background: var(--composer-bg);
   }
   #input {
     flex: 1;
@@ -535,7 +554,7 @@
 
   <div id="chatPanel">
     <div id="noChatSelected">Виберіть чат зліва або почніть новий</div>
-    <div id="activeChat" style="display:none; flex:1; display:flex; flex-direction:column;">
+    <div id="activeChat" style="display:none;">
       <div id="chatHeader">
         <span id="chatHeaderAvatarWrap" class="avatarWrap" style="position:relative;display:inline-block;">
           <div id="chatHeaderAvatar" class="avatar" style="width:34px;height:34px;font-size:14px;"></div>
