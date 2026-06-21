@@ -267,7 +267,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, password')
+      .select('id, username, password, bio, avatar_color')
       .ilike('username', username)
       .maybeSingle();
 
@@ -285,18 +285,36 @@ io.on('connection', (socket) => {
 
     socket.username = data.username;
     markOnline(socket.username);
-    callback({ success: true, username: data.username, token });
+    callback({
+      success: true,
+      username: data.username,
+      token,
+      bio: data.bio || '',
+      avatarColor: data.avatar_color || '',
+    });
   });
 
   // --- Автологін за збереженим токеном (наприклад, при перезавантаженні сторінки) ---
-  socket.on('auto login', (token, callback) => {
+  socket.on('auto login', async (token, callback) => {
     const username = sessions.get(token);
     if (!username) {
       return callback({ success: false });
     }
     socket.username = username;
     markOnline(username);
-    callback({ success: true, username });
+
+    const { data } = await supabase
+      .from('users')
+      .select('bio, avatar_color')
+      .ilike('username', username)
+      .maybeSingle();
+
+    callback({
+      success: true,
+      username,
+      bio: (data && data.bio) || '',
+      avatarColor: (data && data.avatar_color) || '',
+    });
   });
 
   // --- Логаут ---
@@ -304,6 +322,41 @@ io.on('connection', (socket) => {
     sessions.delete(token);
     markOffline(socket.username);
     socket.username = null;
+  });
+
+  // --- Оновлення підпису й кольору аватарки (видно іншим користувачам) ---
+  socket.on('update profile', async ({ bio, avatarColor }, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+
+    const cleanBio = (bio || '').toString().trim().slice(0, 80);
+    const cleanColor = (avatarColor || '').toString().trim().slice(0, 16);
+
+    const { error } = await supabase
+      .from('users')
+      .update({ bio: cleanBio, avatar_color: cleanColor || null })
+      .ilike('username', socket.username);
+
+    if (error) {
+      console.error(error);
+      return cb({ success: false, error: 'Не вдалося зберегти профіль' });
+    }
+
+    io.emit('profile updated', { username: socket.username, bio: cleanBio, avatarColor: cleanColor });
+    cb({ success: true, bio: cleanBio, avatarColor: cleanColor });
+  });
+
+  // --- Публічний профіль будь-якого користувача (підпис + колір аватарки) ---
+  socket.on('get profile', async (username, callback) => {
+    const cb = callback || (() => {});
+    const { data, error } = await supabase
+      .from('users')
+      .select('username, bio, avatar_color')
+      .ilike('username', (username || '').toString().trim())
+      .maybeSingle();
+
+    if (error || !data) return cb(null);
+    cb({ username: data.username, bio: data.bio || '', avatarColor: data.avatar_color || '' });
   });
 
   // --- Список онлайн-юзернеймів ---
@@ -361,7 +414,29 @@ io.on('connection', (socket) => {
       }
     }
 
-    callback(Array.from(chats.values()));
+    // Підтягуємо публічні профілі (підпис + колір аватарки) усіх співрозмовників одним запитом
+    const partners = Array.from(chats.values()).map((c) => c.partner);
+    const profileByUsername = {};
+    if (partners.length > 0) {
+      const orFilter = partners.map((p) => `username.ilike.${p}`).join(',');
+      const { data: profileRows } = await supabase
+        .from('users')
+        .select('username, bio, avatar_color')
+        .or(orFilter);
+      (profileRows || []).forEach((row) => {
+        profileByUsername[row.username.toLowerCase()] = {
+          bio: row.bio || '',
+          avatarColor: row.avatar_color || '',
+        };
+      });
+    }
+
+    const result = Array.from(chats.values()).map((chat) => {
+      const profile = profileByUsername[chat.partner] || { bio: '', avatarColor: '' };
+      return { ...chat, bio: profile.bio, avatarColor: profile.avatarColor };
+    });
+
+    callback(result);
   });
 
   // --- Почати новий чат ---
@@ -378,7 +453,7 @@ io.on('connection', (socket) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('username')
+      .select('username, bio, avatar_color')
       .ilike('username', partnerUsername)
       .maybeSingle();
 
@@ -387,7 +462,13 @@ io.on('connection', (socket) => {
     }
 
     const room = makeRoomName(socket.username, data.username);
-    callback({ success: true, room, partner: data.username });
+    callback({
+      success: true,
+      room,
+      partner: data.username,
+      bio: data.bio || '',
+      avatarColor: data.avatar_color || '',
+    });
   });
 
   socket.on('join room', (room) => {

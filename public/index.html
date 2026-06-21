@@ -914,6 +914,8 @@
   #settingsClose,
   #profileCancel { background: var(--bg-input); color: var(--text-bright); }
   #modalError { color: var(--danger); font-size: 13px; min-height: 16px; }
+  .fieldHint { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
+  .modalErrorText { color: var(--danger); font-size: 13px; min-height: 16px; margin-top: 8px; }
   #backToListBtn {
     display: none;
     background: var(--bg-input);
@@ -1099,10 +1101,12 @@
       Підпис
       <textarea id="profileBioInput" maxlength="80" placeholder="Наприклад: на зв'язку"></textarea>
     </label>
+    <div class="fieldHint">Підпис і колір аватарки бачать інші користувачі</div>
     <label style="display:block;margin-top:14px;">
       Колір аватарки
       <div id="profileColorSwatches" class="colorSwatches"></div>
     </label>
+    <div id="profileError" class="modalErrorText"></div>
     <div class="settingsRow">
       <button type="button" id="profileCancel">Скасувати</button>
       <button type="button" id="profileSave">Зберегти</button>
@@ -1130,10 +1134,22 @@
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
 
+  // --- Публічні профілі (підпис + колір аватарки) інших користувачів ---
+  const profileCache = new Map(); // username (lowercase) -> { bio, avatarColor }
+
+  function cacheProfile(username, bio, avatarColorValue) {
+    if (!username) return;
+    profileCache.set(username.toLowerCase(), { bio: bio || '', avatarColor: avatarColorValue || '' });
+  }
+
+  function getProfile(username) {
+    return profileCache.get((username || '').toLowerCase()) || { bio: '', avatarColor: '' };
+  }
+
   function fillAvatar(el, name) {
     if (!name) { el.textContent = '?'; el.style.background = '#555'; return; }
     el.textContent = name.charAt(0).toUpperCase();
-    el.style.background = avatarColor(name.toLowerCase());
+    el.style.background = getProfile(name).avatarColor || avatarColor(name.toLowerCase());
   }
 
   // --- Тема: темна/світла, зберігається в localStorage ---
@@ -1245,7 +1261,7 @@
   });
   applyPalette(currentPalette);
 
-  // --- Профіль: локальні налаштування поточного пристрою ---
+  // --- Профіль: підпис і колір аватарки, зберігаються на сервері й видимі іншим ---
   const profileBtn = document.getElementById('profileBtn');
   const profileOverlay = document.getElementById('profileOverlay');
   const profileBioInput = document.getElementById('profileBioInput');
@@ -1253,24 +1269,10 @@
   const profilePreviewName = document.getElementById('profilePreviewName');
   const profilePreviewBio = document.getElementById('profilePreviewBio');
   const profileColorSwatches = document.getElementById('profileColorSwatches');
+  const profileError = document.getElementById('profileError');
+  const profileSaveBtn = document.getElementById('profileSave');
   let currentProfile = { bio: '', avatarColor: '' };
   let selectedProfileColor = '';
-
-  function profileKey(username) {
-    return `sparkProfile:${(username || '').toLowerCase()}`;
-  }
-
-  function loadProfile(username) {
-    try {
-      return JSON.parse(localStorage.getItem(profileKey(username))) || { bio: '', avatarColor: '' };
-    } catch (_err) {
-      return { bio: '', avatarColor: '' };
-    }
-  }
-
-  function saveProfile(username, profile) {
-    localStorage.setItem(profileKey(username), JSON.stringify(profile));
-  }
 
   function applyProfile() {
     const brandMark = document.querySelector('.brandMark');
@@ -1306,6 +1308,7 @@
     profilePreviewBio.textContent = profileBioInput.value || 'Без підпису';
     profilePreviewAvatar.textContent = (myUsername || '?').charAt(0).toUpperCase();
     profilePreviewAvatar.style.background = selectedProfileColor;
+    profileError.textContent = '';
     renderProfileSwatches();
     profileOverlay.classList.add('show');
   }
@@ -1320,14 +1323,26 @@
   profileOverlay.addEventListener('click', (e) => {
     if (e.target === profileOverlay) profileOverlay.classList.remove('show');
   });
-  document.getElementById('profileSave').addEventListener('click', () => {
-    currentProfile = {
-      bio: profileBioInput.value.trim().slice(0, 80),
-      avatarColor: selectedProfileColor,
-    };
-    saveProfile(myUsername, currentProfile);
-    applyProfile();
-    profileOverlay.classList.remove('show');
+  profileSaveBtn.addEventListener('click', () => {
+    const bio = profileBioInput.value.trim().slice(0, 80);
+    const avatarColorValue = selectedProfileColor;
+    profileError.textContent = '';
+    profileSaveBtn.disabled = true;
+    profileSaveBtn.textContent = 'Зберігаю...';
+    socket.emit('update profile', { bio, avatarColor: avatarColorValue }, (res) => {
+      profileSaveBtn.disabled = false;
+      profileSaveBtn.textContent = 'Зберегти';
+      if (!res || !res.success) {
+        profileError.textContent = (res && res.error) || 'Не вдалося зберегти профіль';
+        return;
+      }
+      currentProfile = { bio, avatarColor: avatarColorValue };
+      cacheProfile(myUsername, bio, avatarColorValue);
+      applyProfile();
+      fillAvatar(document.getElementById('myAvatar'), myUsername);
+      renderChatList();
+      profileOverlay.classList.remove('show');
+    });
   });
 
   // --- Онлайн-статус та "друкує..." ---
@@ -1390,7 +1405,7 @@
     if (authToken) {
       socket.emit('auto login', authToken, (res) => {
         if (res.success) {
-          enterApp(res.username);
+          enterApp(res.username, { bio: res.bio, avatarColor: res.avatarColor });
         } else {
           localStorage.removeItem('authToken');
           authToken = '';
@@ -1437,21 +1452,22 @@
           if (loginRes.success) {
             authToken = loginRes.token;
             localStorage.setItem('authToken', authToken);
-            enterApp(loginRes.username);
+            enterApp(loginRes.username, { bio: loginRes.bio, avatarColor: loginRes.avatarColor });
           }
         });
       } else {
         authToken = res.token;
         localStorage.setItem('authToken', authToken);
-        enterApp(res.username);
+        enterApp(res.username, { bio: res.bio, avatarColor: res.avatarColor });
       }
     });
   });
 
-  function enterApp(username) {
+  function enterApp(username, profile) {
     myUsername = username;
     requestNotificationPermission();
-    currentProfile = loadProfile(username);
+    currentProfile = { bio: (profile && profile.bio) || '', avatarColor: (profile && profile.avatarColor) || '' };
+    cacheProfile(username, currentProfile.bio, currentProfile.avatarColor);
     applyProfile();
     fillAvatar(document.getElementById('myAvatar'), username);
     authDiv.style.display = 'none';
@@ -1481,7 +1497,8 @@
 
   function loadChats() {
     socket.emit('get chats', null, (chats) => {
-      chatsCache = chats;
+      chatsCache = chats || [];
+      chatsCache.forEach((chat) => cacheProfile(chat.partner, chat.bio, chat.avatarColor));
       renderChatList();
     });
   }
@@ -1574,6 +1591,7 @@
         modalError.textContent = res.error;
         return;
       }
+      cacheProfile(res.partner, res.bio, res.avatarColor);
       modalOverlay.classList.remove('show');
       openChat(res.room, res.partner);
     });
@@ -1594,15 +1612,16 @@
     if (!currentPartner) return;
     const isTyping = typingState[currentRoom];
     const isOnline = onlineSet.has(currentPartner.toLowerCase());
+    const bio = getProfile(currentPartner).bio;
     chatHeaderAvatarWrap.classList.toggle('online', isOnline);
     if (isTyping) {
       chatHeaderStatus.textContent = 'друкує...';
       chatHeaderStatus.className = 'chatHeaderStatus typing';
     } else if (isOnline) {
-      chatHeaderStatus.textContent = 'онлайн';
+      chatHeaderStatus.textContent = bio ? `онлайн · ${bio}` : 'онлайн';
       chatHeaderStatus.className = 'chatHeaderStatus online';
     } else {
-      chatHeaderStatus.textContent = 'офлайн';
+      chatHeaderStatus.textContent = bio ? `офлайн · ${bio}` : 'офлайн';
       chatHeaderStatus.className = 'chatHeaderStatus';
     }
   }
@@ -1622,6 +1641,16 @@
     document.querySelectorAll('.chatItem').forEach((el) => {
       el.classList.toggle('active', el.dataset.room === room);
     });
+
+    if (!profileCache.has((partner || '').toLowerCase())) {
+      socket.emit('get profile', partner, (profile) => {
+        if (profile) cacheProfile(profile.username || partner, profile.bio, profile.avatarColor);
+        if (currentPartner === partner) {
+          fillAvatar(chatHeaderAvatar, partner);
+          updateChatHeaderStatus();
+        }
+      });
+    }
 
     socket.emit('join room', room);
   }
@@ -2052,6 +2081,18 @@
     else onlineSet.delete(key);
     renderChatList();
     if (currentPartner && currentPartner.toLowerCase() === key) {
+      updateChatHeaderStatus();
+    }
+  });
+
+  // --- Хтось змінив підпис/колір аватарки ---
+  socket.on('profile updated', (data) => {
+    const username = data && data.username;
+    if (!username) return;
+    cacheProfile(username, data.bio, data.avatarColor);
+    renderChatList();
+    if (currentPartner && currentPartner.toLowerCase() === username.toLowerCase()) {
+      fillAvatar(chatHeaderAvatar, currentPartner);
       updateChatHeaderStatus();
     }
   });
