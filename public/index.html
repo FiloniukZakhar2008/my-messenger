@@ -350,7 +350,37 @@
     padding: 24px 26px;
     list-style: none;
     margin: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
   }
+  #messages::-webkit-scrollbar { width: 8px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb {
+    background: var(--bubble-other-border);
+    border-radius: 8px;
+    transition: background 0.15s ease;
+  }
+  #messages:hover::-webkit-scrollbar-thumb { background: var(--accent); opacity: 0.6; }
+  #messages::-webkit-scrollbar-thumb:hover { background: var(--accent-hover); }
+
+  #chatList { scrollbar-width: thin; scrollbar-color: var(--bubble-other-border) transparent; }
+  #chatList::-webkit-scrollbar { width: 7px; }
+  #chatList::-webkit-scrollbar-track { background: transparent; }
+  #chatList::-webkit-scrollbar-thumb { background: var(--bubble-other-border); border-radius: 8px; }
+  #chatList::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  #messages li.bubbleIn { animation: bubbleIn 0.22s ease-out; }
+
+  @keyframes sendPulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(0.86); }
+    100% { transform: scale(1); }
+  }
+  #form button.sending { animation: sendPulse 0.25s ease; }
   #messages li {
     max-width: 60%;
     overflow-wrap: anywhere;
@@ -363,6 +393,7 @@
     position: relative;
     border: 1px solid var(--bubble-other-border);
     box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+    transition: box-shadow 0.15s ease;
   }
   #messages li.mine {
     background: var(--bubble-mine);
@@ -494,19 +525,73 @@
   .voiceMsg {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 200px;
-  }
-  .voiceMsg audio {
-    flex: 1;
-    height: 36px;
-    min-width: 160px;
     max-width: 280px;
   }
-  .voiceDuration {
-    font-size: 12px;
+  .voicePlayBtn {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hot));
+    color: #101513;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    transition: transform 0.12s ease;
+  }
+  .voicePlayBtn:active { transform: scale(0.9); }
+  .voiceMsg .voiceBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .voiceProgressBar {
+    position: relative;
+    height: 5px;
+    border-radius: 4px;
+    background: var(--bg-input);
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .voiceProgressFill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.08s linear;
+  }
+  .voiceProgressBar .voiceProgressKnob {
+    position: absolute;
+    top: 50%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--bubble-other);
+    transform: translate(-50%, -50%);
+    left: 0%;
+    transition: left 0.08s linear;
+  }
+  .voiceMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
     color: var(--text-dim-2);
-    white-space: nowrap;
+  }
+  .voiceMsg.playing .voicePlayBtn { animation: voicePulse 1.4s ease-in-out infinite; }
+  @keyframes voicePulse {
+    0%, 100% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 0 rgba(85,245,200,0.35); }
+    50% { box-shadow: 0 4px 10px rgba(0,0,0,0.18), 0 0 0 6px rgba(85,245,200,0); }
   }
 
   #toastContainer {
@@ -1306,6 +1391,10 @@
         isCurrentlyTyping = false;
         socket.emit('stop typing', { room: currentRoom });
       }
+      const sendBtn = form.querySelector('button[type="submit"]');
+      sendBtn.classList.remove('sending');
+      void sendBtn.offsetWidth;
+      sendBtn.classList.add('sending');
     }
   });
 
@@ -1448,9 +1537,76 @@
 
   bindVoicePress(voiceBtn);
 
+  let currentlyPlayingAudio = null;
+
+  function setupVoicePlayer(li) {
+    const wrap = li.querySelector('.voiceMsg');
+    const audio = wrap.querySelector('.voiceAudio');
+    const playBtn = wrap.querySelector('.voicePlayBtn');
+    const fill = wrap.querySelector('.voiceProgressFill');
+    const knob = wrap.querySelector('.voiceProgressKnob');
+    const bar = wrap.querySelector('.voiceProgressBar');
+    const timeEl = wrap.querySelector('.voiceTime');
+    const totalEl = wrap.querySelector('.voiceTotal');
+
+    function setProgress(ratio) {
+      const pct = Math.max(0, Math.min(1, ratio)) * 100;
+      fill.style.width = pct + '%';
+      knob.style.left = pct + '%';
+    }
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        totalEl.textContent = formatDuration(audio.duration);
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) setProgress(audio.currentTime / audio.duration);
+      timeEl.textContent = formatDuration(audio.currentTime);
+    });
+
+    audio.addEventListener('play', () => {
+      if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) {
+        currentlyPlayingAudio.pause();
+      }
+      currentlyPlayingAudio = audio;
+      playBtn.textContent = '⏸';
+      wrap.classList.add('playing');
+    });
+
+    audio.addEventListener('pause', () => {
+      playBtn.textContent = '▶';
+      wrap.classList.remove('playing');
+    });
+
+    audio.addEventListener('ended', () => {
+      playBtn.textContent = '▶';
+      wrap.classList.remove('playing');
+      setProgress(0);
+      timeEl.textContent = '0:00';
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) audio.play().catch(() => {});
+      else audio.pause();
+    });
+
+    function seekFromEvent(e) {
+      const rect = bar.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const ratio = (clientX - rect.left) / rect.width;
+      if (audio.duration) {
+        audio.currentTime = Math.max(0, Math.min(1, ratio)) * audio.duration;
+        setProgress(ratio);
+      }
+    }
+    bar.addEventListener('click', seekFromEvent);
+  }
+
   function renderMessage(data) {
     const li = document.createElement('li');
-    li.className = data.user === myUsername ? 'mine' : '';
+    li.className = data.user === myUsername ? 'mine bubbleIn' : 'bubbleIn';
     if (data.type === 'voice') li.classList.add('voice');
     if (data.id) li.dataset.id = data.id;
     fillMessageContent(li, data);
@@ -1480,14 +1636,26 @@
     if (isVoice) {
       bodyHtml = `
         <div class="voiceMsg">
-          <audio controls preload="metadata" src="${escapeHtml(data.mediaUrl)}"></audio>
-          <span class="voiceDuration">${formatDuration(data.duration)}</span>
+          <button type="button" class="voicePlayBtn">▶</button>
+          <div class="voiceBody">
+            <div class="voiceProgressBar">
+              <div class="voiceProgressFill"></div>
+              <div class="voiceProgressKnob"></div>
+            </div>
+            <div class="voiceMeta">
+              <span class="voiceTime">0:00</span>
+              <span class="voiceTotal">${formatDuration(data.duration)}</span>
+            </div>
+          </div>
+          <audio class="voiceAudio" preload="metadata" src="${escapeHtml(data.mediaUrl)}"></audio>
         </div>`;
     } else {
       bodyHtml = `<span class="msgText">${escapeHtml(data.text)}</span>`;
     }
 
     li.innerHTML = `${actions}<div class="who">${escapeHtml(data.user)}</div>${bodyHtml}${editedTag}${tick}`;
+
+    if (isVoice) setupVoicePlayer(li);
 
     if (isMine) {
       const delBtn = li.querySelector('.delBtn');
