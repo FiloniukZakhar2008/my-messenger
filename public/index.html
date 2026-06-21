@@ -655,6 +655,76 @@
   #settingsClose,
   #profileCancel { background: var(--bg-input); color: var(--text-bright); }
   #modalError { color: var(--danger); font-size: 13px; min-height: 16px; }
+  #backToListBtn {
+    display: none;
+    background: var(--bg-input);
+    border: none;
+    color: var(--text-bright);
+    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #backToListBtn:hover { background: var(--bg-hover); }
+
+  /* ===== Мобільна адаптація ===== */
+  @media (max-width: 768px) {
+    body { font-size: 16px; } /* щоб iOS Safari не зумив інпути */
+
+    #app {
+      padding: 0;
+      height: 100dvh;
+    }
+
+    #sidebar {
+      width: 100%;
+      border-radius: 0;
+      border-right: 1px solid var(--border-color);
+    }
+
+    #chatPanel {
+      border-radius: 0;
+    }
+
+    /* За замовчуванням на мобільному видно список чатів на весь екран,
+       а чат-панель схована. Коли відкрито чат — навпаки. */
+    #app:not(.chatOpen) #chatPanel { display: none; }
+    #app.chatOpen #sidebar { display: none; }
+    #app.chatOpen #chatPanel { display: flex; }
+
+    #backToListBtn { display: flex; align-items: center; justify-content: center; }
+
+    #sidebarHeader { padding: 14px 14px 12px; }
+    .brandName { font-size: 18px; }
+
+    #chatHeader { padding: 12px 14px; }
+
+    #messages { padding: 14px 12px 18px; }
+    #messages li { max-width: 82%; padding: 10px 12px; font-size: 15px; }
+
+    #form { padding: 10px 10px 14px; }
+    #input { font-size: 16px; padding: 11px 12px; } /* 16px запобігає авто-зуму на iOS */
+    #voiceBtn, #form button { width: 42px; }
+
+    .chatItem { margin: 6px 8px; padding: 10px 12px; }
+
+    #modalBox,
+    .settingsBox {
+      width: calc(100vw - 32px);
+      max-width: 360px;
+    }
+
+    #profileOverlay > div {
+      width: calc(100vw - 32px);
+      max-width: 360px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    #messages li { max-width: 88%; }
+  }
 </style>
 </head>
 <body>
@@ -695,6 +765,7 @@
     <div id="noChatSelected">Виберіть чат зліва або почніть новий</div>
     <div id="activeChat" style="display:none;">
       <div id="chatHeader">
+        <button type="button" id="backToListBtn" aria-label="Назад">←</button>
         <span id="chatHeaderAvatarWrap" class="avatarWrap" style="position:relative;display:inline-block;">
           <div id="chatHeaderAvatar" class="avatar" style="width:34px;height:34px;font-size:14px;"></div>
           <span class="onlineDot"></span>
@@ -1055,6 +1126,7 @@
     currentProfile = { bio: '', avatarColor: '' };
     currentRoom = '';
     appDiv.classList.remove('show');
+    appDiv.classList.remove('chatOpen');
     authDiv.style.display = 'flex';
     usernameInput.value = '';
     passwordInput.value = '';
@@ -1195,6 +1267,7 @@
     messages.innerHTML = '';
     noChatSelected.style.display = 'none';
     activeChat.style.display = 'flex';
+    document.getElementById('app').classList.add('chatOpen');
 
     document.querySelectorAll('.chatItem').forEach((el) => {
       el.classList.toggle('active', el.dataset.room === room);
@@ -1202,6 +1275,10 @@
 
     socket.emit('join room', room);
   }
+
+  document.getElementById('backToListBtn').addEventListener('click', () => {
+    document.getElementById('app').classList.remove('chatOpen');
+  });
 
   let typingTimeout = null;
   let isCurrentlyTyping = false;
