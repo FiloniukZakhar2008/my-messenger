@@ -812,7 +812,21 @@
     overflow-y: auto;
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-soft);
+    scrollbar-width: thin;
+    scrollbar-color: var(--bubble-other-border) transparent;
   }
+  #modalBox::-webkit-scrollbar,
+  .settingsBox::-webkit-scrollbar { width: 7px; }
+  #modalBox::-webkit-scrollbar-track,
+  .settingsBox::-webkit-scrollbar-track { background: transparent; }
+  #modalBox::-webkit-scrollbar-thumb,
+  .settingsBox::-webkit-scrollbar-thumb {
+    background: var(--bubble-other-border);
+    border-radius: 8px;
+    transition: background 0.15s ease;
+  }
+  #modalBox::-webkit-scrollbar-thumb:hover,
+  .settingsBox::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   #modalBox h3,
   .settingsBox h3 { margin-top: 0; color: var(--text-bright); }
   #modalBox input,
