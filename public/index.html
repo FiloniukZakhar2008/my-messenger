@@ -23,7 +23,8 @@
     --accent-hot: #ff6f61;
     --danger: #ff6b6b;
     --bubble-mine: #245c51;
-    --bubble-other: #222b31;
+    --bubble-other: #263038;
+    --bubble-other-border: rgba(255,255,255,0.08);
     --chat-bg: rgba(18,24,29,0.92);
     --composer-bg: rgba(17,22,27,0.62);
     --tick: #93b0a8;
@@ -48,7 +49,8 @@
     --accent-hot: #ff6f61;
     --danger: #e0524f;
     --bubble-mine: #cdeee5;
-    --bubble-other: #fffaf2;
+    --bubble-other: #ffffff;
+    --bubble-other-border: #ded4c4;
     --chat-bg: rgba(255,250,242,0.92);
     --composer-bg: rgba(246,241,232,0.82);
     --tick: #82958f;
@@ -215,7 +217,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  #themeBtn {
+  #settingsBtn,
+  #profileBtn {
     background: var(--bg-input);
     border: none;
     color: var(--text-bright);
@@ -225,7 +228,8 @@
     font-size: 15px;
     cursor: pointer;
   }
-  #themeBtn:hover { background: var(--bg-hover); }
+  #settingsBtn:hover,
+  #profileBtn:hover { background: var(--bg-hover); }
   #logoutBtn {
     background: var(--bg-input);
     border: none;
@@ -357,13 +361,17 @@
     color: var(--text-main);
     width: fit-content;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.04);
+    border: 1px solid var(--bubble-other-border);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.08);
   }
   #messages li.mine {
     background: var(--bubble-mine);
     margin-left: auto;
     border-color: rgba(85,245,200,0.18);
     box-shadow: inset 4px 0 0 var(--accent);
+  }
+  body.light #messages li:not(.mine) {
+    box-shadow: 0 10px 26px rgba(83,70,48,0.13);
   }
   #messages li .who {
     font-size: 12px;
@@ -481,41 +489,116 @@
     font-size: 13px;
   }
 
-  /* --- New chat modal --- */
-  #modalOverlay {
+  /* --- Modals --- */
+  #modalOverlay,
+  #settingsOverlay,
+  #profileOverlay {
     display: none;
     position: fixed;
     inset: 0;
     background: var(--overlay);
     align-items: center;
     justify-content: center;
+    z-index: 30;
   }
-  #modalOverlay.show { display: flex; }
-  #modalBox {
+  #modalOverlay.show,
+  #settingsOverlay.show,
+  #profileOverlay.show { display: flex; }
+  #modalBox,
+  .settingsBox {
     background: var(--bg-panel);
     padding: 24px;
     border-radius: 12px;
-    width: 280px;
+    width: min(360px, calc(100vw - 36px));
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-soft);
   }
-  #modalBox h3 { margin-top: 0; color: var(--text-bright); }
-  #modalBox input {
+  #modalBox h3,
+  .settingsBox h3 { margin-top: 0; color: var(--text-bright); }
+  #modalBox input,
+  .settingsBox input,
+  .settingsBox textarea {
     width: 100%;
     padding: 10px;
     border-radius: 8px;
-    border: 1px solid #2b3a4a;
+    border: 1px solid var(--border-color);
     background: var(--bg-main);
     color: var(--text-bright);
+    font: inherit;
   }
-  #modalBox .row { display: flex; gap: 10px; margin-top: 14px; }
-  #modalBox button {
+  .settingsBox textarea {
+    resize: vertical;
+    min-height: 78px;
+  }
+  #modalBox .row,
+  .settingsRow { display: flex; gap: 10px; margin-top: 14px; }
+  #modalBox button,
+  .settingsBox button {
     flex: 1;
     padding: 10px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
   }
+  .settingsOption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+  }
+  .settingsOption:last-of-type { border-bottom: none; }
+  .segmented {
+    display: flex;
+    background: var(--bg-input);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .segmented button {
+    min-width: 68px;
+    padding: 7px 10px;
+    color: var(--text-main);
+    background: transparent;
+  }
+  .segmented button.active {
+    background: var(--accent);
+    color: #101513;
+    font-weight: 800;
+  }
+  .profilePreview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    color: var(--text-main);
+  }
+  .profilePreview .avatar { width: 48px; height: 48px; font-size: 20px; }
+  .colorSwatches {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .colorSwatch {
+    flex: initial;
+    height: 30px;
+    padding: 0;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .colorSwatch.active {
+    border-color: var(--text-bright);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
   #modalCancel { background: var(--bg-input); color: var(--text-bright); }
-  #modalStart { background: var(--accent); color: #fff; }
+  #modalStart,
+  #settingsSave,
+  #profileSave { background: var(--accent); color: #101513; font-weight: 800; }
+  #settingsClose,
+  #profileCancel { background: var(--bg-input); color: var(--text-bright); }
   #modalError { color: var(--danger); font-size: 13px; min-height: 16px; }
 </style>
 </head>
@@ -545,7 +628,8 @@
       </div>
       <div>
         <button id="newChatBtn" title="Новий чат">+</button>
-        <button id="themeBtn" title="Перемкнути тему">🌙</button>
+        <button id="settingsBtn" title="Налаштування">⚙</button>
+        <button id="profileBtn" title="Профіль">◉</button>
         <button id="logoutBtn" title="Вийти">⏻</button>
       </div>
     </div>
@@ -586,6 +670,51 @@
   </div>
 </div>
 
+<div id="settingsOverlay">
+  <div class="settingsBox">
+    <h3>Налаштування</h3>
+    <div class="settingsOption">
+      <span>Тема</span>
+      <div class="segmented" id="themeSegment">
+        <button type="button" data-theme-choice="dark">Темна</button>
+        <button type="button" data-theme-choice="light">Світла</button>
+      </div>
+    </div>
+    <div class="settingsOption">
+      <span>Сповіщення браузера</span>
+      <button type="button" id="notificationBtn">Увімкнути</button>
+    </div>
+    <div class="settingsRow">
+      <button type="button" id="settingsClose">Закрити</button>
+    </div>
+  </div>
+</div>
+
+<div id="profileOverlay">
+  <div class="settingsBox">
+    <h3>Профіль</h3>
+    <div class="profilePreview">
+      <div id="profilePreviewAvatar" class="avatar"></div>
+      <div>
+        <strong id="profilePreviewName"></strong>
+        <div id="profilePreviewBio" class="brandUser"></div>
+      </div>
+    </div>
+    <label>
+      Підпис
+      <textarea id="profileBioInput" maxlength="80" placeholder="Наприклад: на зв'язку"></textarea>
+    </label>
+    <label style="display:block;margin-top:14px;">
+      Колір аватарки
+      <div id="profileColorSwatches" class="colorSwatches"></div>
+    </label>
+    <div class="settingsRow">
+      <button type="button" id="profileCancel">Скасувати</button>
+      <button type="button" id="profileSave">Зберегти</button>
+    </div>
+  </div>
+</div>
+
 <div id="toastContainer"></div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -613,17 +742,120 @@
   }
 
   // --- Тема: темна/світла, зберігається в localStorage ---
-  const themeBtn = document.getElementById('themeBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const themeSegment = document.getElementById('themeSegment');
+  const notificationBtn = document.getElementById('notificationBtn');
   function applyTheme(theme) {
     document.body.classList.toggle('light', theme === 'light');
-    themeBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+    settingsBtn.textContent = '⚙';
+    document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.themeChoice === theme);
+    });
   }
   let currentTheme = localStorage.getItem('theme') || 'dark';
   applyTheme(currentTheme);
-  themeBtn.addEventListener('click', () => {
-    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  settingsBtn.addEventListener('click', () => {
+    settingsOverlay.classList.add('show');
+  });
+  document.getElementById('settingsClose').addEventListener('click', () => {
+    settingsOverlay.classList.remove('show');
+  });
+  settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay) settingsOverlay.classList.remove('show');
+  });
+  themeSegment.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-theme-choice]');
+    if (!btn) return;
+    currentTheme = btn.dataset.themeChoice;
     localStorage.setItem('theme', currentTheme);
     applyTheme(currentTheme);
+  });
+  notificationBtn.addEventListener('click', requestNotificationPermission);
+
+  // --- Профіль: локальні налаштування поточного пристрою ---
+  const profileBtn = document.getElementById('profileBtn');
+  const profileOverlay = document.getElementById('profileOverlay');
+  const profileBioInput = document.getElementById('profileBioInput');
+  const profilePreviewAvatar = document.getElementById('profilePreviewAvatar');
+  const profilePreviewName = document.getElementById('profilePreviewName');
+  const profilePreviewBio = document.getElementById('profilePreviewBio');
+  const profileColorSwatches = document.getElementById('profileColorSwatches');
+  let currentProfile = { bio: '', avatarColor: '' };
+  let selectedProfileColor = '';
+
+  function profileKey(username) {
+    return `sparkProfile:${(username || '').toLowerCase()}`;
+  }
+
+  function loadProfile(username) {
+    try {
+      return JSON.parse(localStorage.getItem(profileKey(username))) || { bio: '', avatarColor: '' };
+    } catch (_err) {
+      return { bio: '', avatarColor: '' };
+    }
+  }
+
+  function saveProfile(username, profile) {
+    localStorage.setItem(profileKey(username), JSON.stringify(profile));
+  }
+
+  function applyProfile() {
+    const brandMark = document.querySelector('.brandMark');
+    const color = currentProfile.avatarColor || avatarColor(myUsername || 'spark');
+    brandMark.textContent = (myUsername || 'S').charAt(0).toUpperCase();
+    brandMark.style.background = color;
+    document.getElementById('myName').textContent = currentProfile.bio
+      ? `@${myUsername} · ${currentProfile.bio}`
+      : `@${myUsername}`;
+  }
+
+  function renderProfileSwatches() {
+    profileColorSwatches.innerHTML = '';
+    AVATAR_COLORS.forEach((color) => {
+      const swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = 'colorSwatch' + (color === selectedProfileColor ? ' active' : '');
+      swatch.style.background = color;
+      swatch.title = color;
+      swatch.addEventListener('click', () => {
+        selectedProfileColor = color;
+        renderProfileSwatches();
+        profilePreviewAvatar.style.background = color;
+      });
+      profileColorSwatches.appendChild(swatch);
+    });
+  }
+
+  function openProfileSettings() {
+    selectedProfileColor = currentProfile.avatarColor || avatarColor(myUsername || 'spark');
+    profileBioInput.value = currentProfile.bio || '';
+    profilePreviewName.textContent = '@' + myUsername;
+    profilePreviewBio.textContent = profileBioInput.value || 'Без підпису';
+    profilePreviewAvatar.textContent = (myUsername || '?').charAt(0).toUpperCase();
+    profilePreviewAvatar.style.background = selectedProfileColor;
+    renderProfileSwatches();
+    profileOverlay.classList.add('show');
+  }
+
+  profileBtn.addEventListener('click', openProfileSettings);
+  profileBioInput.addEventListener('input', () => {
+    profilePreviewBio.textContent = profileBioInput.value.trim() || 'Без підпису';
+  });
+  document.getElementById('profileCancel').addEventListener('click', () => {
+    profileOverlay.classList.remove('show');
+  });
+  profileOverlay.addEventListener('click', (e) => {
+    if (e.target === profileOverlay) profileOverlay.classList.remove('show');
+  });
+  document.getElementById('profileSave').addEventListener('click', () => {
+    currentProfile = {
+      bio: profileBioInput.value.trim().slice(0, 80),
+      avatarColor: selectedProfileColor,
+    };
+    saveProfile(myUsername, currentProfile);
+    applyProfile();
+    profileOverlay.classList.remove('show');
   });
 
   // --- Онлайн-статус та "друкує..." ---
@@ -747,7 +979,8 @@
   function enterApp(username) {
     myUsername = username;
     requestNotificationPermission();
-    document.getElementById('myName').textContent = '@' + username;
+    currentProfile = loadProfile(username);
+    applyProfile();
     fillAvatar(document.getElementById('myAvatar'), username);
     authDiv.style.display = 'none';
     appDiv.classList.add('show');
@@ -762,6 +995,7 @@
     localStorage.removeItem('authToken');
     authToken = '';
     myUsername = '';
+    currentProfile = { bio: '', avatarColor: '' };
     currentRoom = '';
     appDiv.classList.remove('show');
     authDiv.style.display = 'flex';
