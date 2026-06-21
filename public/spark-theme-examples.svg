@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <rect width="1440" height="900" fill="#101113"/>
+  <text x="90" y="105" font-family="Inter, Segoe UI, Arial" font-size="48" font-weight="850" fill="#fff">Spark theme examples</text>
+  <text x="92" y="144" font-family="Inter, Segoe UI, Arial" font-size="18" fill="#9ca3af">A theme is one visual skin: colors, message bubbles, active chat style, and mood.</text>
+  <g transform="translate(90 210)">
+    <rect width="380" height="470" rx="24" fill="#151d21"/>
+    <text x="32" y="58" font-family="Inter, Segoe UI, Arial" font-size="26" font-weight="800" fill="#f3fbf8">Midnight Pulse</text>
+    <circle cx="54" cy="118" r="18" fill="#55f5c8"/><rect x="90" y="100" width="210" height="36" rx="12" fill="#222b31"/>
+    <rect x="54" y="190" width="210" height="56" rx="16" fill="#222b31"/>
+    <rect x="116" y="278" width="210" height="56" rx="16" fill="#245c51"/>
+    <circle cx="54" cy="390" r="22" fill="#55f5c8"/><circle cx="112" cy="390" r="22" fill="#ff6f61"/><circle cx="170" cy="390" r="22" fill="#222b31"/>
+  </g>
+  <g transform="translate(530 210)">
+    <rect width="380" height="470" rx="24" fill="#17161f"/>
+    <text x="32" y="58" font-family="Inter, Segoe UI, Arial" font-size="26" font-weight="800" fill="#fff">Aurora</text>
+    <circle cx="54" cy="118" r="18" fill="#ffd166"/><rect x="90" y="100" width="210" height="36" rx="12" fill="#272733"/>
+    <rect x="54" y="190" width="210" height="56" rx="16" fill="#272733"/>
+    <rect x="116" y="278" width="210" height="56" rx="16" fill="#5a293b"/>
+    <circle cx="54" cy="390" r="22" fill="#ffd166"/><circle cx="112" cy="390" r="22" fill="#ef476f"/><circle cx="170" cy="390" r="22" fill="#272733"/>
+  </g>
+  <g transform="translate(970 210)">
+    <rect width="380" height="470" rx="24" fill="#f6f1e8"/>
+    <text x="32" y="58" font-family="Inter, Segoe UI, Arial" font-size="26" font-weight="800" fill="#1d2524">Daylight</text>
+    <circle cx="54" cy="118" r="18" fill="#00a884"/><rect x="90" y="100" width="210" height="36" rx="12" fill="#e9dfd0"/>
+    <rect x="54" y="190" width="210" height="56" rx="16" fill="#fffaf2"/>
+    <rect x="116" y="278" width="210" height="56" rx="16" fill="#cdeee5"/>
+    <circle cx="54" cy="390" r="22" fill="#00a884"/><circle cx="112" cy="390" r="22" fill="#ff6f61"/><circle cx="170" cy="390" r="22" fill="#e9dfd0"/>
+  </g>
+</svg>

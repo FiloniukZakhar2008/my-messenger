@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101513"/>
+      <stop offset="0.55" stop-color="#161b20"/>
+      <stop offset="1" stop-color="#241919"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#55f5c8"/>
+      <stop offset="1" stop-color="#ff6f61"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <rect x="44" y="38" width="1352" height="824" rx="30" fill="#12181d" filter="url(#shadow)"/>
+  <rect x="44" y="38" width="366" height="824" rx="30" fill="#171e23"/>
+  <rect x="410" y="38" width="1" height="824" fill="#273037"/>
+  <circle cx="86" cy="84" r="18" fill="url(#spark)"/>
+  <path d="M86 70 L91 83 L105 84 L93 92 L97 106 L86 98 L75 106 L79 92 L67 84 L81 83 Z" fill="#101513" opacity="0.95"/>
+  <text x="116" y="94" font-family="Inter, Segoe UI, Arial" font-size="30" font-weight="800" fill="#f3fbf8">Spark</text>
+  <rect x="70" y="126" width="312" height="44" rx="14" fill="#222b31"/>
+  <text x="94" y="154" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#95a3a0">Search conversations</text>
+  <rect x="70" y="194" width="312" height="86" rx="18" fill="#26352f"/>
+  <rect x="70" y="194" width="4" height="86" rx="2" fill="#55f5c8"/>
+  <circle cx="112" cy="237" r="26" fill="#3b7cff"/>
+  <text x="104" y="246" font-family="Inter, Segoe UI, Arial" font-size="25" font-weight="800" fill="#fff">A</text>
+  <text x="154" y="227" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700" fill="#f3fbf8">@anna</text>
+  <text x="154" y="254" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#c9d7d2">Voice note is ready</text>
+  <circle cx="352" cy="223" r="10" fill="#ff6f61"/>
+  <text x="349" y="227" font-family="Inter, Segoe UI, Arial" font-size="11" font-weight="800" fill="#fff">2</text>
+  <g opacity="0.92">
+    <circle cx="112" cy="326" r="26" fill="#b46cff"/><text x="104" y="335" font-family="Inter, Segoe UI, Arial" font-size="25" font-weight="800" fill="#fff">M</text>
+    <text x="154" y="316" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700" fill="#f3fbf8">@maks</text>
+    <text x="154" y="343" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#8f9c99">You: see you later</text>
+    <circle cx="112" cy="412" r="26" fill="#ff9f43"/><text x="104" y="421" font-family="Inter, Segoe UI, Arial" font-size="25" font-weight="800" fill="#fff">L</text>
+    <text x="154" y="402" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700" fill="#f3fbf8">@lina</text>
+    <text x="154" y="429" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#8f9c99">typing...</text>
+  </g>
+  <rect x="454" y="74" width="886" height="70" rx="20" fill="#171e23"/>
+  <circle cx="502" cy="109" r="25" fill="#3b7cff"/>
+  <text x="494" y="118" font-family="Inter, Segoe UI, Arial" font-size="24" font-weight="800" fill="#fff">A</text>
+  <text x="546" y="104" font-family="Inter, Segoe UI, Arial" font-size="20" font-weight="800" fill="#f3fbf8">@anna</text>
+  <text x="546" y="126" font-family="Inter, Segoe UI, Arial" font-size="13" fill="#55f5c8">online now</text>
+  <circle cx="1294" cy="109" r="5" fill="#55f5c8"/>
+  <circle cx="1312" cy="109" r="5" fill="#95a3a0"/>
+  <circle cx="1330" cy="109" r="5" fill="#95a3a0"/>
+  <rect x="500" y="204" width="394" height="74" rx="18" fill="#222b31"/>
+  <text x="526" y="234" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#f3fbf8">Hey, this design feels less like a clone.</text>
+  <text x="526" y="257" font-family="Inter, Segoe UI, Arial" font-size="12" fill="#8f9c99">10:42</text>
+  <rect x="828" y="314" width="430" height="82" rx="18" fill="#245c51"/>
+  <rect x="828" y="314" width="4" height="82" rx="2" fill="#55f5c8"/>
+  <text x="856" y="345" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#f3fbf8">Spark should feel compact, warm, and quick.</text>
+  <text x="856" y="370" font-family="Inter, Segoe UI, Arial" font-size="12" fill="#aee9dc">10:43  read</text>
+  <rect x="500" y="438" width="472" height="88" rx="18" fill="#222b31"/>
+  <text x="526" y="470" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#f3fbf8">The sidebar glow makes active chats obvious.</text>
+  <text x="526" y="495" font-family="Inter, Segoe UI, Arial" font-size="12" fill="#8f9c99">10:45</text>
+  <rect x="454" y="764" width="886" height="58" rx="20" fill="#171e23"/>
+  <text x="486" y="800" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#95a3a0">Write a message...</text>
+  <circle cx="1294" cy="793" r="21" fill="url(#spark)"/>
+  <path d="M1286 793 L1304 784 L1298 802 L1294 795 Z" fill="#101513"/>
+</svg>
