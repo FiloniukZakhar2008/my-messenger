@@ -23,9 +23,16 @@ const voiceUpload = multer({
   limits: { fileSize: MAX_VOICE_BYTES },
 });
 
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
+const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_VIDEO_BYTES },
+});
+
 function messagePreview(row) {
   if (row.deleted) return 'Повідомлення видалено';
   if (row.type === 'voice') return '🎤 Голосове повідомлення';
+  if (row.type === 'video') return '📹 Відеоповідомлення';
   return row.text || '';
 }
 
@@ -50,6 +57,60 @@ async function uploadVoiceFile(room, buffer, mimeType) {
 
   const { data } = supabase.storage.from(VOICE_BUCKET).getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+async function uploadVideoFile(room, buffer, mimeType) {
+  const ext = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+  const filePath = `video/${room}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${ext}`;
+  const { error } = await supabase.storage
+    .from(VOICE_BUCKET)
+    .upload(filePath, buffer, { contentType: mimeType || 'video/webm', upsert: false });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(VOICE_BUCKET).getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+async function broadcastVideoMessage(room, username, mediaUrl, duration, partnerIsViewing) {
+  const { data: inserted, error } = await supabase
+    .from('messages')
+    .insert({
+      room,
+      username,
+      text: '',
+      type: 'video',
+      media_url: mediaUrl,
+      duration,
+      read: partnerIsViewing,
+    })
+    .select('id, created_at')
+    .single();
+
+  if (error) throw error;
+
+  const payload = {
+    id: inserted.id,
+    user: username,
+    type: 'video',
+    mediaUrl,
+    duration,
+    read: partnerIsViewing,
+    createdAt: inserted.created_at,
+  };
+
+  io.to(room).emit('chat message', payload);
+
+  const partnerUsername = getRoomPartner(room, username);
+  emitToUser(partnerUsername, 'new message notification', {
+    id: inserted.id,
+    room,
+    from: username,
+    type: 'video',
+    text: '📹 Відеоповідомлення',
+  });
+
+  return payload;
 }
 
 async function broadcastVoiceMessage(room, username, mediaUrl, duration, partnerIsViewing) {
@@ -125,6 +186,39 @@ app.post('/api/voice-message', voiceUpload.single('audio'), async (req, res) => 
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: 'Не вдалось надіслати голосове повідомлення' });
+  }
+});
+
+app.post('/api/video-message', videoUpload.single('video'), async (req, res) => {
+  try {
+    const username = getSessionUsername(req.body && req.body.token);
+    if (!username) {
+      return res.status(401).json({ success: false, error: 'Сесія недійсна, увійди знову' });
+    }
+
+    const room = (req.body && req.body.room || '').trim();
+    if (!isRoomMember(room, username)) {
+      return res.status(403).json({ success: false, error: 'Немає доступу до цієї кімнати' });
+    }
+
+    if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
+      return res.status(400).json({ success: false, error: 'Відеофайл не отримано' });
+    }
+
+    const duration = Math.max(0, Math.min(300, Number(req.body.duration) || 0));
+    const mimeType = req.file.mimetype || 'video/webm';
+    if (!mimeType.startsWith('video/')) {
+      return res.status(400).json({ success: false, error: 'Дозволені лише відеофайли' });
+    }
+
+    const mediaUrl = await uploadVideoFile(room, req.file.buffer, mimeType);
+    const partnerIsViewing = isPartnerViewingRoom(room, username);
+    const payload = await broadcastVideoMessage(room, username, mediaUrl, duration, partnerIsViewing);
+
+    res.json({ success: true, message: payload });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Не вдалось надіслати відеоповідомлення' });
   }
 });
 

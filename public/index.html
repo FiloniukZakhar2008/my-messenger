@@ -986,6 +986,194 @@
   @media (max-width: 420px) {
     #messages li { max-width: 88%; }
   }
+
+  /* ===== Відеоповідомлення (кружки) ===== */
+  #videoBtn {
+    margin-left: 0;
+    margin-right: 8px;
+    width: 44px;
+    background: var(--bg-input);
+    color: var(--text-bright);
+    border: 1px solid var(--border-color);
+    font-size: 18px;
+    flex-shrink: 0;
+    border-radius: 16px;
+    cursor: pointer;
+  }
+  #videoBtn:hover { background: var(--bg-hover); }
+  #videoBtn.recording {
+    background: var(--accent-hot);
+    color: #fff;
+    border-color: var(--accent-hot);
+    animation: pulseRec 1s ease-in-out infinite;
+  }
+
+  /* Оверлей попереднього перегляду при записі */
+  #videoPreviewOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #videoPreviewOverlay.show { display: flex; }
+  #videoPreviewWrap {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--accent-hot);
+    box-shadow: 0 0 0 6px rgba(var(--accent-hot-rgb),0.3), 0 20px 50px rgba(0,0,0,0.6);
+  }
+  #videoPreviewEl {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* дзеркало для фронталки */
+  }
+  #videoRecordingRing {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 4px solid var(--accent-hot);
+    animation: ringPulse 1s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ringPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-hot-rgb),0.5); }
+    50% { box-shadow: 0 0 0 10px rgba(var(--accent-hot-rgb),0); }
+  }
+  #videoRecordingTimer {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  #videoPreviewHint {
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    text-align: center;
+  }
+  .videoPreviewControls {
+    display: flex;
+    gap: 14px;
+  }
+  .videoPreviewControls button {
+    padding: 12px 28px;
+    border-radius: 16px;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #videoCancelBtn {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+  }
+  #videoSendBtn {
+    background: var(--accent);
+    color: #101513;
+  }
+
+  /* Кружок у чаті */
+  #messages li.videoMsg {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    max-width: 220px;
+  }
+  #messages li.videoMsg.mine { box-shadow: none; }
+  .videoBubble {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    background: #111;
+    flex-shrink: 0;
+  }
+  .videoBubbleVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .videoBubbleOverlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+  }
+  .videoBubble.playing .videoBubbleOverlay { opacity: 0; }
+  .videoBubble:hover .videoBubbleOverlay { opacity: 1 !important; }
+  .videoBubblePlayIcon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #111;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    transition: transform 0.15s;
+  }
+  .videoBubble:hover .videoBubblePlayIcon { transform: scale(1.1); }
+  /* Прогрес-кільце навколо кружка */
+  .videoBubbleRingSvg {
+    position: absolute;
+    inset: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: rotate(-90deg);
+  }
+  .videoBubbleRingBg {
+    fill: none;
+    stroke: rgba(255,255,255,0.15);
+    stroke-width: 4;
+  }
+  .videoBubbleRingFill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 608;
+    stroke-dashoffset: 608;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+  .videoBubbleMeta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+  .videoMsgWrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .videoMsgWrap .who {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    padding: 0 4px;
+  }
 </style>
 </head>
 <body>
@@ -1040,6 +1228,7 @@
       <div id="recordingBar"><span class="recDot"></span><span id="recordingLabel">Запис... 0:00</span></div>
       <form id="form">
         <button type="button" id="voiceBtn" title="Утримуй для запису">🎤</button>
+        <button type="button" id="videoBtn" title="Утримуй для відеоповідомлення">📹</button>
         <input id="input" autocomplete="off" placeholder="Напиши повідомлення..." />
         <button type="submit">➤</button>
       </form>
@@ -1111,6 +1300,19 @@
       <button type="button" id="profileCancel">Скасувати</button>
       <button type="button" id="profileSave">Зберегти</button>
     </div>
+  </div>
+</div>
+
+<div id="videoPreviewOverlay">
+  <div id="videoPreviewWrap">
+    <video id="videoPreviewEl" autoplay muted playsinline></video>
+    <div id="videoRecordingRing"></div>
+  </div>
+  <div id="videoRecordingTimer">0:00</div>
+  <div id="videoPreviewHint">Відпусти кнопку щоб зупинити запис</div>
+  <div class="videoPreviewControls">
+    <button type="button" id="videoCancelBtn">✕ Скасувати</button>
+    <button type="button" id="videoSendBtn" style="display:none;">➤ Надіслати</button>
   </div>
 </div>
 
@@ -1902,6 +2104,7 @@
     const li = document.createElement('li');
     li.className = data.user === myUsername ? 'mine bubbleIn' : 'bubbleIn';
     if (data.type === 'voice') li.classList.add('voice');
+    if (data.type === 'video') li.classList.add('videoMsg');
     if (data.id) li.dataset.id = data.id;
     fillMessageContent(li, data);
     messages.appendChild(li);
@@ -1909,6 +2112,13 @@
   }
 
   function fillMessageContent(li, data) {
+    // Відеоповідомлення (кружки) — окремий рендер
+    if (data.type === 'video' && data.mediaUrl && !data.deleted) {
+      li.classList.add('videoMsg');
+      window._fillVideoMessageContent(li, data);
+      return;
+    }
+
     const isMine = data.user === myUsername;
     const createdAt = data.createdAt || li.dataset.createdAt || '';
     if (createdAt) li.dataset.createdAt = createdAt;
@@ -2109,6 +2319,282 @@
     renderChatList();
     if (data.room === currentRoom) updateChatHeaderStatus();
   });
+
+  // ===== Відеоповідомлення (кружки) =====
+  const videoBtn = document.getElementById('videoBtn');
+  const videoPreviewOverlay = document.getElementById('videoPreviewOverlay');
+  const videoPreviewEl = document.getElementById('videoPreviewEl');
+  const videoRecordingTimer = document.getElementById('videoRecordingTimer');
+  const videoCancelBtn = document.getElementById('videoCancelBtn');
+  const videoSendBtn = document.getElementById('videoSendBtn');
+  const MAX_VIDEO_SECONDS = 60;
+
+  let videoMediaRecorder = null;
+  let videoStream = null;
+  let videoChunks = [];
+  let videoStartedAt = 0;
+  let videoTimerId = null;
+  let isRecordingVideo = false;
+  let videoSending = false;
+  let videoBlob = null;
+  let videoRecordedDuration = 0;
+  let videoStoppedManually = false;
+
+  function pickVideoMimeType() {
+    const types = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4',
+    ];
+    return types.find((t) => MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function updateVideoTimer() {
+    const elapsed = Math.floor((Date.now() - videoStartedAt) / 1000);
+    videoRecordingTimer.textContent = formatDuration(elapsed);
+    if (elapsed >= MAX_VIDEO_SECONDS) stopVideoRecording(true);
+  }
+
+  async function startVideoRecording() {
+    if (!currentRoom || isRecordingVideo || videoSending) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      alert('Браузер не підтримує відеозапис');
+      return;
+    }
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+        audio: true,
+      });
+    } catch (_err) {
+      alert('Немає доступу до камери або мікрофона');
+      return;
+    }
+
+    videoPreviewEl.srcObject = videoStream;
+    videoPreviewEl.play().catch(() => {});
+    videoPreviewOverlay.classList.add('show');
+    videoSendBtn.style.display = 'none';
+    videoPreviewEl.style.display = 'block';
+    document.getElementById('videoPreviewHint').textContent = 'Відпусти кнопку щоб зупинити запис';
+
+    const mimeType = pickVideoMimeType();
+    videoChunks = [];
+    videoMediaRecorder = mimeType
+      ? new MediaRecorder(videoStream, { mimeType })
+      : new MediaRecorder(videoStream);
+
+    videoMediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) videoChunks.push(e.data);
+    };
+
+    videoMediaRecorder.start(250);
+    isRecordingVideo = true;
+    videoStoppedManually = false;
+    videoStartedAt = Date.now();
+    videoBtn.classList.add('recording');
+    videoRecordingTimer.textContent = '0:00';
+    videoTimerId = setInterval(updateVideoTimer, 250);
+  }
+
+  function cleanupVideoStream() {
+    if (videoStream) {
+      videoStream.getTracks().forEach((t) => t.stop());
+      videoStream = null;
+    }
+    videoPreviewEl.srcObject = null;
+    clearInterval(videoTimerId);
+    videoTimerId = null;
+    isRecordingVideo = false;
+    videoBtn.classList.remove('recording');
+  }
+
+  function stopVideoRecording(shouldSend) {
+    if (!isRecordingVideo || !videoMediaRecorder) return;
+    isRecordingVideo = false;
+    videoStoppedManually = true;
+    clearInterval(videoTimerId);
+    videoTimerId = null;
+    videoBtn.classList.remove('recording');
+
+    const recorder = videoMediaRecorder;
+    const duration = Math.max(1, Math.round((Date.now() - videoStartedAt) / 1000));
+    const mimeType = recorder.mimeType || pickVideoMimeType() || 'video/webm';
+    videoRecordedDuration = duration;
+
+    recorder.onstop = () => {
+      videoBlob = new Blob(videoChunks, { type: mimeType });
+      // Зупиняємо стрім, показуємо превью відео
+      if (videoStream) {
+        videoStream.getTracks().forEach((t) => t.stop());
+        videoStream = null;
+      }
+      if (shouldSend && videoBlob.size > 0 && duration >= 1) {
+        // Показуємо превью та кнопку надіслати
+        const blobUrl = URL.createObjectURL(videoBlob);
+        videoPreviewEl.srcObject = null;
+        videoPreviewEl.src = blobUrl;
+        videoPreviewEl.loop = true;
+        videoPreviewEl.style.transform = 'none'; // прибираємо дзеркало для перегляду
+        videoPreviewEl.play().catch(() => {});
+        document.getElementById('videoPreviewHint').textContent = 'Перегляд запису';
+        videoSendBtn.style.display = 'block';
+        videoRecordingTimer.textContent = formatDuration(duration);
+      } else {
+        closeVideoOverlay();
+      }
+    };
+
+    if (recorder.state !== 'inactive') recorder.stop();
+    else {
+      videoBlob = new Blob(videoChunks, { type: mimeType });
+      cleanupVideoStream();
+      closeVideoOverlay();
+    }
+  }
+
+  function closeVideoOverlay() {
+    videoPreviewOverlay.classList.remove('show');
+    videoPreviewEl.pause();
+    videoPreviewEl.src = '';
+    videoPreviewEl.srcObject = null;
+    videoPreviewEl.style.transform = 'scaleX(-1)';
+    videoBlob = null;
+    videoChunks = [];
+    cleanupVideoStream();
+  }
+
+  videoCancelBtn.addEventListener('click', () => {
+    if (isRecordingVideo) stopVideoRecording(false);
+    closeVideoOverlay();
+  });
+
+  videoSendBtn.addEventListener('click', async () => {
+    if (!videoBlob || !currentRoom || videoSending) return;
+    videoSending = true;
+    videoBtn.disabled = true;
+    videoSendBtn.disabled = true;
+    videoSendBtn.textContent = 'Надсилаю...';
+
+    try {
+      const ext = (videoBlob.type || '').includes('mp4') ? 'mp4' : 'webm';
+      const formData = new FormData();
+      formData.append('video', videoBlob, `video.${ext}`);
+      formData.append('token', authToken);
+      formData.append('room', currentRoom);
+      formData.append('duration', String(videoRecordedDuration));
+
+      const res = await fetch('/api/video-message', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!data.success) {
+        alert((data && data.error) || 'Не вдалось надіслати відео');
+      }
+    } catch (_err) {
+      alert('Помилка мережі під час надсилання відео');
+    } finally {
+      videoSending = false;
+      videoBtn.disabled = false;
+      videoSendBtn.disabled = false;
+      videoSendBtn.textContent = '➤ Надіслати';
+      closeVideoOverlay();
+    }
+  });
+
+  function bindVideoPress(el) {
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); startVideoRecording(); });
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); startVideoRecording(); }, { passive: false });
+    el.addEventListener('mouseup', () => { if (isRecordingVideo) stopVideoRecording(true); });
+    el.addEventListener('mouseleave', () => { if (isRecordingVideo) stopVideoRecording(true); });
+    el.addEventListener('touchend', (e) => { e.preventDefault(); if (isRecordingVideo) stopVideoRecording(true); }, { passive: false });
+    el.addEventListener('touchcancel', () => { if (isRecordingVideo) stopVideoRecording(false); });
+  }
+
+  bindVideoPress(videoBtn);
+
+  // Рендер відеоповідомлення
+  function setupVideoBubble(li) {
+    const wrap = li.querySelector('.videoBubble');
+    const video = wrap.querySelector('.videoBubbleVideo');
+    const overlay = wrap.querySelector('.videoBubbleOverlay');
+    const playIcon = wrap.querySelector('.videoBubblePlayIcon');
+    const ringFill = wrap.querySelector('.videoBubbleRingFill');
+    const circumference = 608; // ~2π * 97
+
+    video.addEventListener('timeupdate', () => {
+      if (video.duration) {
+        const ratio = video.currentTime / video.duration;
+        ringFill.style.strokeDashoffset = circumference * (1 - ratio);
+      }
+    });
+
+    video.addEventListener('play', () => {
+      // Зупиняємо інші відео
+      document.querySelectorAll('.videoBubbleVideo').forEach((v) => {
+        if (v !== video && !v.paused) v.pause();
+      });
+      wrap.classList.add('playing');
+      playIcon.textContent = '⏸';
+    });
+
+    video.addEventListener('pause', () => {
+      wrap.classList.remove('playing');
+      playIcon.textContent = '▶';
+    });
+
+    video.addEventListener('ended', () => {
+      wrap.classList.remove('playing');
+      playIcon.textContent = '▶';
+      ringFill.style.strokeDashoffset = circumference;
+      video.currentTime = 0;
+    });
+
+    wrap.addEventListener('click', () => {
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    });
+  }
+
+  const _origFillMessageContent = fillMessageContent;
+  // Патчимо fillMessageContent щоб підтримувати тип 'video'
+  window._fillVideoMessageContent = function(li, data) {
+    const isMine = data.user === myUsername;
+    const createdAt = data.createdAt || li.dataset.createdAt || '';
+    if (createdAt) li.dataset.createdAt = createdAt;
+
+    if (data.deleted) {
+      li.classList.add('deleted');
+      li.innerHTML = `<div class="who">${escapeHtml(data.user)}</div>Повідомлення видалено`;
+      return;
+    }
+
+    li.classList.remove('deleted');
+    const tick = isMine
+      ? `<span class="tick ${data.read ? 'read' : ''}">${data.read ? '✓✓' : '✓'}</span>`
+      : '';
+    const timeTag = createdAt ? `<span class="msgTime">${formatMessageTime(createdAt)}</span>` : '';
+    const circumference = 608;
+
+    li.innerHTML = `
+      <div class="videoMsgWrap">
+        <div class="who">${escapeHtml(data.user)}</div>
+        <div class="videoBubble">
+          <video class="videoBubbleVideo" src="${escapeHtml(data.mediaUrl)}" preload="metadata" playsinline></video>
+          <div class="videoBubbleOverlay">
+            <div class="videoBubblePlayIcon">▶</div>
+          </div>
+          <svg class="videoBubbleRingSvg" viewBox="0 0 208 208">
+            <circle class="videoBubbleRingBg" cx="104" cy="104" r="97"/>
+            <circle class="videoBubbleRingFill" cx="104" cy="104" r="97"
+              style="stroke-dasharray:${circumference};stroke-dashoffset:${circumference}"/>
+          </svg>
+        </div>
+        <div class="videoBubbleMeta">${timeTag}${tick}</div>
+      </div>
+    `;
+    setupVideoBubble(li);
+  };
+
 </script>
 </body>
 </html>
