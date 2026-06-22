@@ -1072,6 +1072,10 @@
     font-weight: 700;
     cursor: pointer;
   }
+  #videoStopBtn {
+    background: var(--accent-hot);
+    color: #fff;
+  }
   #videoCancelBtn {
     background: rgba(255,255,255,0.15);
     color: #fff;
@@ -1311,7 +1315,8 @@
   <div id="videoRecordingTimer">0:00</div>
   <div id="videoPreviewHint">Натисни 📹 ще раз щоб зупинити</div>
   <div class="videoPreviewControls">
-    <button type="button" id="videoCancelBtn">✕ Скасувати</button>
+    <button type="button" id="videoStopBtn">⏹ Зупинити</button>
+    <button type="button" id="videoCancelBtn" style="display:none;">✕ Скасувати</button>
     <button type="button" id="videoSendBtn" style="display:none;">➤ Надіслати</button>
   </div>
 </div>
@@ -2376,8 +2381,10 @@
     videoPreviewEl.play().catch(() => {});
     videoPreviewOverlay.classList.add('show');
     videoSendBtn.style.display = 'none';
+    videoCancelBtn.style.display = 'none';
+    document.getElementById('videoStopBtn').style.display = 'block';
     videoPreviewEl.style.display = 'block';
-    document.getElementById('videoPreviewHint').textContent = 'Натисни 📹 ще раз щоб зупинити';
+    document.getElementById('videoPreviewHint').textContent = 'Запис іде...';
 
     const mimeType = pickVideoMimeType();
     videoChunks = [];
@@ -2439,6 +2446,8 @@
         videoPreviewEl.style.transform = 'none'; // прибираємо дзеркало для перегляду
         videoPreviewEl.play().catch(() => {});
         document.getElementById('videoPreviewHint').textContent = 'Перегляд запису';
+        document.getElementById('videoStopBtn').style.display = 'none';
+        videoCancelBtn.style.display = 'block';
         videoSendBtn.style.display = 'block';
         videoRecordingTimer.textContent = formatDuration(duration);
       } else {
@@ -2465,8 +2474,11 @@
     cleanupVideoStream();
   }
 
+  document.getElementById('videoStopBtn').addEventListener('click', () => {
+    stopVideoRecording(true);
+  });
+
   videoCancelBtn.addEventListener('click', () => {
-    if (isRecordingVideo) stopVideoRecording(false);
     closeVideoOverlay();
   });
 
@@ -2501,17 +2513,9 @@
     }
   });
 
-  function bindVideoPress(el) {
-    el.addEventListener('click', () => {
-      if (isRecordingVideo) {
-        stopVideoRecording(true);
-      } else {
-        startVideoRecording();
-      }
-    });
-  }
-
-  bindVideoPress(videoBtn);
+  videoBtn.addEventListener('click', () => {
+    if (!isRecordingVideo) startVideoRecording();
+  });
 
   // Рендер відеоповідомлення
   function setupVideoBubble(li) {
