@@ -2490,9 +2490,12 @@
     videoSendBtn.textContent = 'Надсилаю...';
 
     try {
-      const ext = (videoBlob.type || '').includes('mp4') ? 'mp4' : 'webm';
+      const mime = videoBlob.type || '';
+      const ext = mime.includes('mp4') ? 'mp4' : 'webm';
       const formData = new FormData();
-      formData.append('video', videoBlob, `video.${ext}`);
+      // Завжди передаємо як video/webm щоб сервер не відкидав
+      const sendBlob = new Blob([videoBlob], { type: ext === 'mp4' ? 'video/mp4' : 'video/webm' });
+      formData.append('video', sendBlob, `video.${ext}`);
       formData.append('token', authToken);
       formData.append('room', currentRoom);
       formData.append('duration', String(videoRecordedDuration));

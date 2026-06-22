@@ -206,10 +206,9 @@ app.post('/api/video-message', videoUpload.single('video'), async (req, res) => 
     }
 
     const duration = Math.max(0, Math.min(300, Number(req.body.duration) || 0));
-    const mimeType = req.file.mimetype || 'video/webm';
-    if (!mimeType.startsWith('video/')) {
-      return res.status(400).json({ success: false, error: 'Дозволені лише відеофайли' });
-    }
+    // Приймаємо будь-який mime що записує браузер (webm, mp4, x-matroska тощо)
+    const rawMime = req.file.mimetype || '';
+    const mimeType = rawMime || 'video/webm';
 
     const mediaUrl = await uploadVideoFile(room, req.file.buffer, mimeType);
     const partnerIsViewing = isPartnerViewingRoom(room, username);
