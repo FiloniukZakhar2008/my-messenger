@@ -281,7 +281,8 @@
     white-space: nowrap;
   }
   #settingsBtn,
-  #profileBtn {
+  #profileBtn,
+  #newGroupBtn {
     background: var(--bg-input);
     border: none;
     color: var(--text-bright);
@@ -292,7 +293,8 @@
     cursor: pointer;
   }
   #settingsBtn:hover,
-  #profileBtn:hover { background: var(--bg-hover); }
+  #profileBtn:hover,
+  #newGroupBtn:hover { background: var(--bg-hover); }
   #logoutBtn {
     background: var(--bg-input);
     border: none;
@@ -789,6 +791,8 @@
 
   /* --- Modals --- */
   #modalOverlay,
+  #newGroupOverlay,
+  #groupMembersOverlay,
   #settingsOverlay,
   #profileOverlay {
     display: none;
@@ -800,9 +804,12 @@
     z-index: 30;
   }
   #modalOverlay.show,
+  #newGroupOverlay.show,
+  #groupMembersOverlay.show,
   #settingsOverlay.show,
   #profileOverlay.show { display: flex; }
   #modalBox,
+  .modalBoxLike,
   .settingsBox {
     background: var(--bg-panel);
     padding: 24px;
@@ -816,20 +823,26 @@
     scrollbar-color: var(--bubble-other-border) transparent;
   }
   #modalBox::-webkit-scrollbar,
+  .modalBoxLike::-webkit-scrollbar,
   .settingsBox::-webkit-scrollbar { width: 7px; }
   #modalBox::-webkit-scrollbar-track,
+  .modalBoxLike::-webkit-scrollbar-track,
   .settingsBox::-webkit-scrollbar-track { background: transparent; }
   #modalBox::-webkit-scrollbar-thumb,
+  .modalBoxLike::-webkit-scrollbar-thumb,
   .settingsBox::-webkit-scrollbar-thumb {
     background: var(--bubble-other-border);
     border-radius: 8px;
     transition: background 0.15s ease;
   }
   #modalBox::-webkit-scrollbar-thumb:hover,
+  .modalBoxLike::-webkit-scrollbar-thumb:hover,
   .settingsBox::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   #modalBox h3,
+  .modalBoxLike h3,
   .settingsBox h3 { margin-top: 0; color: var(--text-bright); }
   #modalBox input,
+  .modalBoxLike input,
   .settingsBox input,
   .settingsBox textarea {
     width: 100%;
@@ -845,8 +858,10 @@
     min-height: 78px;
   }
   #modalBox .row,
+  .modalBoxLike .row,
   .settingsRow { display: flex; gap: 10px; margin-top: 14px; }
   #modalBox button,
+  .modalBoxLike button,
   .settingsBox button {
     flex: 1;
     padding: 10px;
@@ -916,6 +931,65 @@
   #modalError { color: var(--danger); font-size: 13px; min-height: 16px; }
   .fieldHint { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
   .modalErrorText { color: var(--danger); font-size: 13px; min-height: 16px; margin-top: 8px; }
+
+  /* --- Групи: список учасників, ролі --- */
+  #groupMembersList {
+    margin-top: 14px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .memberRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--bg-input);
+  }
+  .memberRow .memberName {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-bright);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .roleBadge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .roleBadge.role-owner { background: rgba(var(--accent-rgb), 0.22); color: var(--accent); }
+  .roleBadge.role-admin { background: rgba(79, 195, 255, 0.18); color: #4fc3ff; }
+  .roleBadge.role-member { background: rgba(255,255,255,0.08); color: var(--text-dim-2); }
+  .roleBadge.role-serf { background: rgba(255, 107, 107, 0.16); color: var(--danger); }
+  .memberRoleSelect {
+    font-size: 12px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    color: var(--text-bright);
+  }
+  .memberKickBtn {
+    border: none;
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 4px 6px;
+    line-height: 1;
+  }
+  .memberKickBtn:hover { opacity: 0.75; }
+  .chatItem.groupItem .avatar { background: var(--bg-active); }
   #backToListBtn {
     display: none;
     background: var(--bg-input);
@@ -929,6 +1003,20 @@
     flex-shrink: 0;
   }
   #backToListBtn:hover { background: var(--bg-hover); }
+  #groupMembersBtn {
+    background: var(--bg-input);
+    border: none;
+    color: var(--text-bright);
+    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  #groupMembersBtn:hover { background: var(--bg-hover); }
 
   /* ===== Мобільна адаптація ===== */
   @media (max-width: 768px) {
@@ -1206,6 +1294,7 @@
       </div>
       <div>
         <button id="newChatBtn" title="Новий чат">+</button>
+        <button id="newGroupBtn" title="Нова група">👥</button>
         <button id="settingsBtn" title="Налаштування">⚙</button>
         <button id="profileBtn" title="Профіль">◉</button>
         <button id="logoutBtn" title="Вийти">⏻</button>
@@ -1227,6 +1316,7 @@
           <span id="chatHeaderName"></span>
           <span id="chatHeaderStatus" class="chatHeaderStatus"></span>
         </div>
+        <button type="button" id="groupMembersBtn" title="Учасники групи" style="display:none;margin-left:auto;">👥</button>
       </div>
       <ul id="messages"></ul>
       <div id="recordingBar"><span class="recDot"></span><span id="recordingLabel">Запис... 0:00</span></div>
@@ -1248,6 +1338,33 @@
     <div class="row">
       <button id="modalCancel">Скасувати</button>
       <button id="modalStart">Почати</button>
+    </div>
+  </div>
+</div>
+
+<div id="newGroupOverlay">
+  <div id="newGroupBox" class="modalBoxLike">
+    <h3>Нова група</h3>
+    <input id="groupNameInput" placeholder="Назва групи" maxlength="64" />
+    <p id="newGroupError" class="modalErrorText"></p>
+    <div class="row">
+      <button id="newGroupCancel">Скасувати</button>
+      <button id="newGroupCreate">Створити</button>
+    </div>
+  </div>
+</div>
+
+<div id="groupMembersOverlay">
+  <div class="settingsBox">
+    <h3 id="groupMembersTitle">Учасники групи</h3>
+    <div id="addMemberRow" class="row" style="margin-top:0;">
+      <input id="addMemberInput" placeholder="@юзернейм" style="flex:2;" />
+      <button id="addMemberBtn" style="flex:1;">Додати</button>
+    </div>
+    <p id="addMemberError" class="modalErrorText"></p>
+    <div id="groupMembersList"></div>
+    <div class="settingsRow">
+      <button type="button" id="groupMembersClose">Закрити</button>
     </div>
   </div>
 </div>
@@ -1331,6 +1448,22 @@
   let currentPartner = '';
   let isRegisterMode = false;
   let authToken = localStorage.getItem('authToken') || '';
+
+  // --- Групи ---
+  let groupsCache = [];          // [{ id, name, room, role }]
+  let currentGroup = null;       // активна група (якщо currentRoom — групова кімната)
+  let currentGroupMembers = [];  // [{ username, role, joined_at }] для відкритої модалки
+
+  const ROLE_LABELS = { owner: 'Власник', admin: 'Адміністратор', member: 'Учасник', serf: 'Раб Божий' };
+  const ROLE_RANK = { owner: 3, admin: 2, member: 1, serf: 0 };
+
+  function isGroupRoom(room) {
+    return typeof room === 'string' && room.startsWith('group_');
+  }
+
+  function roleLabel(role) {
+    return ROLE_LABELS[role] || role;
+  }
 
   // --- Аватарки: кольоровий кружок з першою літерою юзернейму ---
   const AVATAR_COLORS = ['#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', '#aed581', '#ffb74d', '#ff8a65', '#a1887f'];
@@ -1682,6 +1815,7 @@
     socket.emit('get online users', null, (list) => {
       onlineSet = new Set((list || []).map((u) => u.toLowerCase()));
       loadChats();
+      loadGroups();
     });
   }
 
@@ -1710,12 +1844,50 @@
     });
   }
 
+  function loadGroups() {
+    socket.emit('get groups', null, (groups) => {
+      groupsCache = groups || [];
+      renderChatList();
+    });
+  }
+
   function renderChatList() {
     chatListDiv.innerHTML = '';
-    if (chatsCache.length === 0) {
-      chatListDiv.innerHTML = '<div id="emptyList">Поки немає чатів. Натисни "+", щоб почати.</div>';
+    const hasAnything = chatsCache.length > 0 || groupsCache.length > 0;
+    if (!hasAnything) {
+      chatListDiv.innerHTML = '<div id="emptyList">Поки немає чатів. Натисни "+", щоб почати, або "👥" для групи.</div>';
       return;
     }
+
+    groupsCache.forEach((group) => {
+      const div = document.createElement('div');
+      div.className = 'chatItem groupItem';
+      div.dataset.room = group.room;
+
+      const avatarWrap = document.createElement('span');
+      avatarWrap.className = 'avatarWrap';
+      avatarWrap.style.cssText = 'position:relative;display:inline-block;';
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'avatar';
+      avatarDiv.style.cssText = 'width:44px;height:44px;font-size:17px;';
+      avatarDiv.textContent = '👥';
+      avatarWrap.appendChild(avatarDiv);
+      div.appendChild(avatarWrap);
+
+      const body = document.createElement('div');
+      body.className = 'chatItemBody';
+      body.innerHTML = `
+        <div class="meta">
+          <span class="name">${escapeHtml(group.name)}</span>
+        </div>
+        <span class="preview">${roleLabel(group.role)}</span>
+      `;
+      div.appendChild(body);
+      div.addEventListener('click', () => openGroup(group));
+      if (group.room === currentRoom) div.classList.add('active');
+      chatListDiv.appendChild(div);
+    });
+
     chatsCache.forEach((chat) => {
       const div = document.createElement('div');
       div.className = 'chatItem' + (chat.unread > 0 ? ' hasUnread' : '');
@@ -1804,6 +1976,44 @@
     });
   });
 
+  // --- New group modal ---
+  const newGroupOverlay = document.getElementById('newGroupOverlay');
+  const groupNameInput = document.getElementById('groupNameInput');
+  const newGroupError = document.getElementById('newGroupError');
+
+  document.getElementById('newGroupBtn').addEventListener('click', () => {
+    newGroupOverlay.classList.add('show');
+    groupNameInput.value = '';
+    newGroupError.textContent = '';
+    groupNameInput.focus();
+  });
+
+  document.getElementById('newGroupCancel').addEventListener('click', () => {
+    newGroupOverlay.classList.remove('show');
+  });
+
+  document.getElementById('newGroupCreate').addEventListener('click', () => {
+    const name = groupNameInput.value.trim();
+    if (!name) {
+      newGroupError.textContent = 'Введи назву групи';
+      return;
+    }
+    socket.emit('create group', { name }, (res) => {
+      if (!res || !res.success) {
+        newGroupError.textContent = (res && res.error) || 'Не вдалося створити групу';
+        return;
+      }
+      newGroupOverlay.classList.remove('show');
+      groupsCache.push(res.group);
+      renderChatList();
+      openGroup(res.group);
+    });
+  });
+
+  groupNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('newGroupCreate').click();
+  });
+
   // --- Active chat ---
   const noChatSelected = document.getElementById('noChatSelected');
   const activeChat = document.getElementById('activeChat');
@@ -1836,9 +2046,12 @@
   function openChat(room, partner) {
     currentRoom = room;
     currentPartner = partner;
+    currentGroup = null;
+    document.getElementById('groupMembersBtn').style.display = 'none';
     resetPageTitle();
     chatHeaderName.textContent = '@' + partner;
     fillAvatar(chatHeaderAvatar, partner);
+    chatHeaderAvatar.style.background = '';
     updateChatHeaderStatus();
     messages.innerHTML = '';
     noChatSelected.style.display = 'none';
@@ -1861,6 +2074,219 @@
 
     socket.emit('join room', room);
   }
+
+  function openGroup(group) {
+    currentRoom = group.room;
+    currentPartner = '';
+    currentGroup = group;
+    resetPageTitle();
+    chatHeaderName.textContent = group.name;
+    chatHeaderAvatarWrap.classList.remove('online');
+    chatHeaderAvatar.textContent = '👥';
+    chatHeaderAvatar.style.background = 'var(--bg-active)';
+    chatHeaderStatus.textContent = roleLabel(group.role);
+    chatHeaderStatus.className = 'chatHeaderStatus';
+    document.getElementById('groupMembersBtn').style.display = 'inline-flex';
+    messages.innerHTML = '';
+    noChatSelected.style.display = 'none';
+    activeChat.style.display = 'flex';
+    document.getElementById('app').classList.add('chatOpen');
+
+    document.querySelectorAll('.chatItem').forEach((el) => {
+      el.classList.toggle('active', el.dataset.room === group.room);
+    });
+
+    socket.emit('join room', group.room);
+  }
+
+  // --- Керування учасниками групи ---
+  const groupMembersOverlay = document.getElementById('groupMembersOverlay');
+  const groupMembersTitle = document.getElementById('groupMembersTitle');
+  const groupMembersList = document.getElementById('groupMembersList');
+  const addMemberInput = document.getElementById('addMemberInput');
+  const addMemberError = document.getElementById('addMemberError');
+
+  function myRoleInCurrentGroup() {
+    if (!currentGroup) return null;
+    const found = groupsCache.find((g) => g.room === currentGroup.room);
+    return found ? found.role : null;
+  }
+
+  function renderGroupMembersList() {
+    const myRole = myRoleInCurrentGroup();
+    const canChangeRoles = myRole === 'owner';
+    const canKick = myRole === 'owner' || myRole === 'admin';
+
+    groupMembersList.innerHTML = '';
+    currentGroupMembers.forEach((member) => {
+      const row = document.createElement('div');
+      row.className = 'memberRow';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'memberName';
+      nameSpan.textContent = '@' + member.username + (member.username === myUsername ? ' (ти)' : '');
+      row.appendChild(nameSpan);
+
+      // Можливість змінювати роль: лише owner, не на себе, не на іншого owner
+      const targetIsOwner = member.role === 'owner';
+      const isSelf = member.username === myUsername;
+
+      if (canChangeRoles && !isSelf && !targetIsOwner) {
+        const select = document.createElement('select');
+        select.className = 'memberRoleSelect';
+        ['admin', 'member', 'serf'].forEach((r) => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = roleLabel(r);
+          if (r === member.role) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener('change', () => {
+          const newRole = select.value;
+          socket.emit('change member role', { room: currentGroup.room, username: member.username, role: newRole }, (res) => {
+            if (!res || !res.success) {
+              alert((res && res.error) || 'Не вдалося змінити роль');
+              select.value = member.role;
+              return;
+            }
+            member.role = newRole;
+          });
+        });
+        row.appendChild(select);
+      } else {
+        const badge = document.createElement('span');
+        badge.className = 'roleBadge role-' + member.role;
+        badge.textContent = roleLabel(member.role);
+        row.appendChild(badge);
+      }
+
+      // Кік: owner/admin можуть кікати member/serf; owner додатково може кікати admin (але не себе й не owner)
+      const canActOnThis = !isSelf && !targetIsOwner && (
+        myRole === 'owner' || (myRole === 'admin' && (member.role === 'member' || member.role === 'serf'))
+      );
+      if (canKick && canActOnThis) {
+        const kickBtn = document.createElement('button');
+        kickBtn.type = 'button';
+        kickBtn.className = 'memberKickBtn';
+        kickBtn.title = 'Видалити з групи';
+        kickBtn.textContent = '✕';
+        kickBtn.addEventListener('click', () => {
+          if (!confirm(`Видалити @${member.username} з групи?`)) return;
+          socket.emit('remove group member', { room: currentGroup.room, username: member.username }, (res) => {
+            if (!res || !res.success) {
+              alert((res && res.error) || 'Не вдалося видалити учасника');
+              return;
+            }
+            currentGroupMembers = currentGroupMembers.filter((m) => m.username !== member.username);
+            renderGroupMembersList();
+          });
+        });
+        row.appendChild(kickBtn);
+      }
+
+      groupMembersList.appendChild(row);
+    });
+  }
+
+  function openGroupMembersModal() {
+    if (!currentGroup) return;
+    groupMembersTitle.textContent = 'Учасники: ' + currentGroup.name;
+    addMemberInput.value = '';
+    addMemberError.textContent = '';
+
+    const myRole = myRoleInCurrentGroup();
+    const canAdd = myRole === 'owner' || myRole === 'admin' || myRole === 'member';
+    document.getElementById('addMemberRow').style.display = canAdd ? 'flex' : 'none';
+
+    socket.emit('get group members', currentGroup.room, (members) => {
+      currentGroupMembers = members || [];
+      renderGroupMembersList();
+      groupMembersOverlay.classList.add('show');
+    });
+  }
+
+  document.getElementById('groupMembersBtn').addEventListener('click', openGroupMembersModal);
+  document.getElementById('groupMembersClose').addEventListener('click', () => {
+    groupMembersOverlay.classList.remove('show');
+  });
+  groupMembersOverlay.addEventListener('click', (e) => {
+    if (e.target === groupMembersOverlay) groupMembersOverlay.classList.remove('show');
+  });
+
+  document.getElementById('addMemberBtn').addEventListener('click', () => {
+    const username = addMemberInput.value.trim();
+    if (!username) {
+      addMemberError.textContent = 'Введи юзернейм';
+      return;
+    }
+    socket.emit('add group member', { room: currentGroup.room, username }, (res) => {
+      if (!res || !res.success) {
+        addMemberError.textContent = (res && res.error) || 'Не вдалося додати учасника';
+        return;
+      }
+      addMemberError.textContent = '';
+      addMemberInput.value = '';
+      currentGroupMembers.push({ username: username.replace(/^@/, ''), role: 'member', joined_at: new Date().toISOString() });
+      renderGroupMembersList();
+    });
+  });
+
+  addMemberInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('addMemberBtn').click();
+  });
+
+  // Сповіщення про зміни в групі — синхронізуємо список учасників, якщо модалка відкрита
+  socket.on('group member added', (data) => {
+    if (currentGroup && data.room === currentGroup.room && groupMembersOverlay.classList.contains('show')) {
+      if (!currentGroupMembers.some((m) => m.username === data.username)) {
+        currentGroupMembers.push({ username: data.username, role: data.role, joined_at: new Date().toISOString() });
+        renderGroupMembersList();
+      }
+    }
+  });
+
+  socket.on('group member removed', (data) => {
+    if (currentGroup && data.room === currentGroup.room) {
+      currentGroupMembers = currentGroupMembers.filter((m) => m.username !== data.username);
+      if (groupMembersOverlay.classList.contains('show')) renderGroupMembersList();
+    }
+  });
+
+  socket.on('member role changed', (data) => {
+    if (currentGroup && data.room === currentGroup.room) {
+      const member = currentGroupMembers.find((m) => m.username === data.username);
+      if (member) member.role = data.role;
+      if (groupMembersOverlay.classList.contains('show')) renderGroupMembersList();
+      // Якщо змінили мою роль — оновлюємо кеш груп і заголовок
+      if (data.username === myUsername) {
+        const g = groupsCache.find((grp) => grp.room === data.room);
+        if (g) g.role = data.role;
+        if (currentGroup.room === data.room) {
+          currentGroup.role = data.role;
+          chatHeaderStatus.textContent = roleLabel(data.role);
+        }
+        renderChatList();
+      }
+    }
+  });
+
+  // Мене додали в нову групу — підвантажуємо список груп
+  socket.on('added to group', () => {
+    loadGroups();
+  });
+
+  // Мене видалили з групи — прибираємо з кешу й закриваємо чат, якщо він був відкритий
+  socket.on('removed from group', (data) => {
+    groupsCache = groupsCache.filter((g) => g.room !== data.room);
+    renderChatList();
+    if (currentRoom === data.room) {
+      currentRoom = '';
+      currentGroup = null;
+      activeChat.style.display = 'none';
+      noChatSelected.style.display = 'flex';
+      document.getElementById('app').classList.remove('chatOpen');
+    }
+  });
 
   document.getElementById('backToListBtn').addEventListener('click', () => {
     document.getElementById('app').classList.remove('chatOpen');
@@ -2125,6 +2551,13 @@
     }
 
     const isMine = data.user === myUsername;
+    const myRole = isGroupRoom(currentRoom) ? myRoleInCurrentGroup() : null;
+    // У групі: serf не може видаляти навіть своє; owner/admin можуть видаляти чужі
+    const canDeleteOwn = isMine && (!isGroupRoom(currentRoom) || myRole !== 'serf');
+    const canDeleteOthers = !isMine && isGroupRoom(currentRoom) && (myRole === 'owner' || myRole === 'admin');
+    const canDelete = canDeleteOwn || canDeleteOthers;
+    const canEdit = isMine; // редагувати завжди можна лише власне (як і раніше)
+
     const createdAt = data.createdAt || li.dataset.createdAt || '';
     if (createdAt) li.dataset.createdAt = createdAt;
     if (data.deleted) {
@@ -2141,9 +2574,9 @@
     const timeTag = createdAt ? `<span class="msgTime">${formatMessageTime(createdAt)}</span>` : '';
     const footer = `<div class="msgFooter">${editedTag}${timeTag}${tick}</div>`;
     const isVoice = data.type === 'voice' && data.mediaUrl;
-    const actions = isMine && !isVoice
-      ? `<span class="msgActions"><span class="editBtn" title="Редагувати">✎</span><span class="delBtn" title="Видалити">🗑</span></span>`
-      : (isMine ? `<span class="msgActions"><span class="delBtn" title="Видалити">🗑</span></span>` : '');
+    const editBtnHtml = canEdit && !isVoice ? `<span class="editBtn" title="Редагувати">✎</span>` : '';
+    const delBtnHtml = canDelete ? `<span class="delBtn" title="Видалити">🗑</span>` : '';
+    const actions = (editBtnHtml || delBtnHtml) ? `<span class="msgActions">${editBtnHtml}${delBtnHtml}</span>` : '';
 
     let bodyHtml;
     if (isVoice) {
@@ -2170,9 +2603,11 @@
 
     if (isVoice) setupVoicePlayer(li);
 
-    if (isMine) {
+    if (canDelete) {
       const delBtn = li.querySelector('.delBtn');
-      delBtn.addEventListener('click', () => deleteMessage(li, data));
+      if (delBtn) delBtn.addEventListener('click', () => deleteMessage(li, data));
+    }
+    if (canEdit) {
       const editBtn = li.querySelector('.editBtn');
       if (editBtn) editBtn.addEventListener('click', () => startEdit(li, data));
     }
