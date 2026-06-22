@@ -1309,7 +1309,7 @@
     <div id="videoRecordingRing"></div>
   </div>
   <div id="videoRecordingTimer">0:00</div>
-  <div id="videoPreviewHint">Відпусти кнопку щоб зупинити запис</div>
+  <div id="videoPreviewHint">Натисни 📹 ще раз щоб зупинити</div>
   <div class="videoPreviewControls">
     <button type="button" id="videoCancelBtn">✕ Скасувати</button>
     <button type="button" id="videoSendBtn" style="display:none;">➤ Надіслати</button>
@@ -2377,7 +2377,7 @@
     videoPreviewOverlay.classList.add('show');
     videoSendBtn.style.display = 'none';
     videoPreviewEl.style.display = 'block';
-    document.getElementById('videoPreviewHint').textContent = 'Відпусти кнопку щоб зупинити запис';
+    document.getElementById('videoPreviewHint').textContent = 'Натисни 📹 ще раз щоб зупинити';
 
     const mimeType = pickVideoMimeType();
     videoChunks = [];
@@ -2502,12 +2502,13 @@
   });
 
   function bindVideoPress(el) {
-    el.addEventListener('mousedown', (e) => { e.preventDefault(); startVideoRecording(); });
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); startVideoRecording(); }, { passive: false });
-    el.addEventListener('mouseup', () => { if (isRecordingVideo) stopVideoRecording(true); });
-    el.addEventListener('mouseleave', () => { if (isRecordingVideo) stopVideoRecording(true); });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); if (isRecordingVideo) stopVideoRecording(true); }, { passive: false });
-    el.addEventListener('touchcancel', () => { if (isRecordingVideo) stopVideoRecording(false); });
+    el.addEventListener('click', () => {
+      if (isRecordingVideo) {
+        stopVideoRecording(true);
+      } else {
+        startVideoRecording();
+      }
+    });
   }
 
   bindVideoPress(videoBtn);
