@@ -10,9 +10,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Дані підключення до Supabase (можна винести у змінні середовища)
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://klosisstvruqkiialvcx.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_Wn4Gn_lJq9SLRowgsnxlzQ_XqQ13-Ot';
+// Дані підключення до Supabase — лише через змінні середовища (.env, не в git!)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Помилка: заповни SUPABASE_URL та SUPABASE_KEY у файлі .env');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -40,7 +45,10 @@ function getSessionUsername(token) {
   return sessions.get((token || '').trim()) || null;
 }
 
+// Перевірка членства лише для ПРИВАТНИХ кімнат (voice/video API).
+// Групові голосові/відео повідомлення поки не реалізовані — туди не пускаємо.
 function isRoomMember(room, username) {
+  if ((room || '').startsWith('group_')) return false;
   const parts = (room || '').split('_');
   const user = (username || '').toLowerCase();
   return parts.length === 2 && parts.includes(user);
@@ -258,6 +266,60 @@ function makeRoomName(nameA, nameB) {
 function getRoomPartner(room, username) {
   const currentUser = (username || '').toLowerCase();
   return (room || '').split('_').find((name) => name !== currentUser) || '';
+}
+
+// --- Групи: ролі та права ---
+// owner   — найвища роль: будь-яка дія + єдиний, хто може змінювати ролі
+// admin   — як owner, окрім зміни ролей і видалення/кіку owner/admin
+// member  — пише, видаляє СВОЇ повідомлення, додає нових учасників
+// serf    — "раб божий": лише пише повідомлення, нічого більше
+const ROLE_RANK = { owner: 3, admin: 2, member: 1, serf: 0 };
+
+function groupRoomName(groupId) {
+  return `group_${groupId}`;
+}
+
+function isGroupRoom(room) {
+  return typeof room === 'string' && room.startsWith('group_');
+}
+
+function groupIdFromRoom(room) {
+  const id = Number((room || '').replace('group_', ''));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+async function getMembership(groupId, username) {
+  const { data, error } = await supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .ilike('username', username)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.role;
+}
+
+function canDeleteOthersMessages(role) {
+  return role === 'owner' || role === 'admin';
+}
+
+function canAddMembers(role) {
+  return role === 'owner' || role === 'admin' || role === 'member';
+}
+
+function canKickMembers(role) {
+  return role === 'owner' || role === 'admin';
+}
+
+function canChangeRoles(role) {
+  return role === 'owner';
+}
+
+// Адмін не може кікнути/принизити іншого admin чи owner — тільки owner може
+function canActOnTarget(actorRole, targetRole) {
+  if (actorRole === 'owner') return targetRole !== 'owner'; // власник не діє на самого себе через ці методи
+  if (actorRole === 'admin') return targetRole === 'member' || targetRole === 'serf';
+  return false;
 }
 
 function emitToUser(username, event, payload) {
@@ -517,6 +579,7 @@ io.on('connection', (socket) => {
       .from('messages')
       .select('room, username, text, created_at, read, deleted, type, duration')
       .or(`room.ilike.${username.toLowerCase()}_%,room.ilike.%_${username.toLowerCase()}`)
+      .is('group_id', null)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -603,20 +666,33 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('join room', (room) => {
+  socket.on('join room', async (room) => {
     if (!requireAuth(socket)) return;
 
-    // Перевіряємо, що цей юзер дійсно учасник кімнати, перш ніж пускати туди
-    const parts = (room || '').split('_');
-    if (parts.length !== 2 || !parts.includes(socket.username.toLowerCase())) {
-      return;
-    }
+    if (isGroupRoom(room)) {
+      const groupId = groupIdFromRoom(room);
+      if (!groupId) return;
+      const role = await getMembership(groupId, socket.username);
+      if (!role) return; // не учасник цієї групи — не пускаємо
 
-    if (socket.currentRoom && socket.currentRoom !== room) {
-      socket.leave(socket.currentRoom);
+      if (socket.currentRoom && socket.currentRoom !== room) {
+        socket.leave(socket.currentRoom);
+      }
+      socket.join(room);
+      socket.currentRoom = room;
+    } else {
+      // Приватний чат: кімната — це 'user1_user2', перевіряємо, що юзер є учасником
+      const parts = (room || '').split('_');
+      if (parts.length !== 2 || !parts.includes(socket.username.toLowerCase())) {
+        return;
+      }
+
+      if (socket.currentRoom && socket.currentRoom !== room) {
+        socket.leave(socket.currentRoom);
+      }
+      socket.join(room);
+      socket.currentRoom = room;
     }
-    socket.join(room);
-    socket.currentRoom = room;
 
     supabase
       .from('messages')
@@ -646,6 +722,229 @@ io.on('connection', (socket) => {
       });
   });
 
+  // =============================================================
+  // --- Групи ---
+  // =============================================================
+
+  // Створити групу — той, хто створює, стає owner
+  socket.on('create group', async ({ name }, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+
+    const cleanName = (name || '').toString().trim().slice(0, 64);
+    if (!cleanName) {
+      return cb({ success: false, error: 'Введи назву групи' });
+    }
+
+    const { data: group, error: groupErr } = await supabase
+      .from('groups')
+      .insert({ name: cleanName, created_by: socket.username })
+      .select('id, name, created_at')
+      .single();
+
+    if (groupErr || !group) {
+      console.error(groupErr);
+      return cb({ success: false, error: 'Не вдалося створити групу' });
+    }
+
+    const { error: memberErr } = await supabase
+      .from('group_members')
+      .insert({ group_id: group.id, username: socket.username, role: 'owner' });
+
+    if (memberErr) {
+      console.error(memberErr);
+      return cb({ success: false, error: 'Групу створено, але не вдалося додати власника' });
+    }
+
+    cb({
+      success: true,
+      group: { id: group.id, name: group.name, room: groupRoomName(group.id), role: 'owner' },
+    });
+  });
+
+  // Додати учасника в групу (owner, admin, member — НЕ serf)
+  socket.on('add group member', async ({ room, username }, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+
+    const groupId = groupIdFromRoom(room);
+    if (!groupId) return cb({ success: false, error: 'Невірна група' });
+
+    const myRole = await getMembership(groupId, socket.username);
+    if (!myRole) return cb({ success: false, error: 'Ти не учасник цієї групи' });
+    if (!canAddMembers(myRole)) {
+      return cb({ success: false, error: 'У тебе немає прав додавати учасників' });
+    }
+
+    const targetUsername = (username || '').toString().trim().replace(/^@/, '');
+    if (!targetUsername) return cb({ success: false, error: 'Введи юзернейм' });
+
+    const { data: userRow, error: userErr } = await supabase
+      .from('users')
+      .select('username')
+      .ilike('username', targetUsername)
+      .maybeSingle();
+
+    if (userErr || !userRow) {
+      return cb({ success: false, error: 'Користувача не знайдено' });
+    }
+
+    const existingRole = await getMembership(groupId, userRow.username);
+    if (existingRole) {
+      return cb({ success: false, error: 'Цей користувач вже в групі' });
+    }
+
+    const { error: insertErr } = await supabase
+      .from('group_members')
+      .insert({ group_id: groupId, username: userRow.username, role: 'member' });
+
+    if (insertErr) {
+      console.error(insertErr);
+      return cb({ success: false, error: 'Не вдалося додати учасника' });
+    }
+
+    io.to(room).emit('group member added', { room, username: userRow.username, role: 'member' });
+    emitToUser(userRow.username, 'added to group', { room, groupId, addedBy: socket.username });
+    cb({ success: true });
+  });
+
+  // Видалити (кікнути) учасника — owner/admin, з обмеженнями canActOnTarget
+  socket.on('remove group member', async ({ room, username }, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+
+    const groupId = groupIdFromRoom(room);
+    if (!groupId) return cb({ success: false, error: 'Невірна група' });
+
+    const myRole = await getMembership(groupId, socket.username);
+    if (!myRole) return cb({ success: false, error: 'Ти не учасник цієї групи' });
+    if (!canKickMembers(myRole)) {
+      return cb({ success: false, error: 'У тебе немає прав видаляти учасників' });
+    }
+
+    const targetUsername = (username || '').toString().trim();
+    if (targetUsername.toLowerCase() === socket.username.toLowerCase()) {
+      return cb({ success: false, error: 'Не можна видалити самого себе звідси' });
+    }
+
+    const targetRole = await getMembership(groupId, targetUsername);
+    if (!targetRole) return cb({ success: false, error: 'Цього користувача немає в групі' });
+
+    if (!canActOnTarget(myRole, targetRole)) {
+      return cb({ success: false, error: 'У тебе немає прав видалити цього учасника' });
+    }
+
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .ilike('username', targetUsername);
+
+    if (error) {
+      console.error(error);
+      return cb({ success: false, error: 'Не вдалося видалити учасника' });
+    }
+
+    io.to(room).emit('group member removed', { room, username: targetUsername });
+    emitToUser(targetUsername, 'removed from group', { room, groupId, removedBy: socket.username });
+    cb({ success: true });
+  });
+
+  // Змінити роль учасника — лише owner, і не на самого owner
+  socket.on('change member role', async ({ room, username, role }, callback) => {
+    if (!requireAuth(socket, callback)) return;
+    const cb = callback || (() => {});
+
+    const groupId = groupIdFromRoom(room);
+    if (!groupId) return cb({ success: false, error: 'Невірна група' });
+
+    const myRole = await getMembership(groupId, socket.username);
+    if (!myRole) return cb({ success: false, error: 'Ти не учасник цієї групи' });
+    if (!canChangeRoles(myRole)) {
+      return cb({ success: false, error: 'Лише власник може змінювати ролі' });
+    }
+
+    const newRole = (role || '').toString().trim();
+    if (!Object.prototype.hasOwnProperty.call(ROLE_RANK, newRole) || newRole === 'owner') {
+      return cb({ success: false, error: 'Невірна роль' });
+    }
+
+    const targetUsername = (username || '').toString().trim();
+    if (targetUsername.toLowerCase() === socket.username.toLowerCase()) {
+      return cb({ success: false, error: 'Не можна змінити власну роль' });
+    }
+
+    const targetRole = await getMembership(groupId, targetUsername);
+    if (!targetRole) return cb({ success: false, error: 'Цього користувача немає в групі' });
+    if (targetRole === 'owner') {
+      return cb({ success: false, error: 'Не можна змінити роль власника' });
+    }
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ role: newRole })
+      .eq('group_id', groupId)
+      .ilike('username', targetUsername);
+
+    if (error) {
+      console.error(error);
+      return cb({ success: false, error: 'Не вдалося змінити роль' });
+    }
+
+    io.to(room).emit('member role changed', { room, username: targetUsername, role: newRole });
+    cb({ success: true, role: newRole });
+  });
+
+  // Список учасників групи з ролями
+  socket.on('get group members', async (room, callback) => {
+    const cb = callback || (() => {});
+    const groupId = groupIdFromRoom(room);
+    if (!groupId) return cb([]);
+
+    const myRole = await getMembership(groupId, socket.username);
+    if (!myRole) return cb([]); // не учасник — нічого не бачить
+
+    const { data, error } = await supabase
+      .from('group_members')
+      .select('username, role, joined_at')
+      .eq('group_id', groupId)
+      .order('joined_at', { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return cb([]);
+    }
+    cb(data || []);
+  });
+
+  // Список груп, у яких я перебуваю
+  socket.on('get groups', async (_unused, callback) => {
+    const cb = callback || (() => {});
+    if (!requireAuth(socket, () => cb([]))) return;
+
+    const { data, error } = await supabase
+      .from('group_members')
+      .select('role, groups(id, name)')
+      .ilike('username', socket.username);
+
+    if (error) {
+      console.error(error);
+      return cb([]);
+    }
+
+    const result = (data || [])
+      .filter((row) => row.groups)
+      .map((row) => ({
+        id: row.groups.id,
+        name: row.groups.name,
+        room: groupRoomName(row.groups.id),
+        role: row.role,
+      }));
+    cb(result);
+  });
+
+
+
   socket.on('chat message', async (data) => {
     if (!requireAuth(socket)) return;
     // Кімната має бути та, в яку юзер реально приєднався — і він має бути її учасником
@@ -654,11 +953,24 @@ io.on('connection', (socket) => {
     const text = (data.text || '').trim();
     if (!text) return;
 
+    const groupId = isGroupRoom(data.room) ? groupIdFromRoom(data.room) : null;
+    if (groupId) {
+      // Усі ролі, включно з "раб божий", можуть писати — перевіряємо лише членство
+      const role = await getMembership(groupId, socket.username);
+      if (!role) return;
+    }
+
     const partnerIsViewing = isPartnerViewingRoom(data.room, socket.username);
 
     const { data: inserted, error } = await supabase
       .from('messages')
-      .insert({ room: data.room, username: socket.username, text, read: partnerIsViewing })
+      .insert({
+        room: data.room,
+        username: socket.username,
+        text,
+        read: partnerIsViewing,
+        group_id: groupId,
+      })
       .select('id, created_at')
       .single();
 
@@ -676,13 +988,15 @@ io.on('connection', (socket) => {
       createdAt: inserted.created_at,
     });
 
-    const partnerUsername = getRoomPartner(data.room, socket.username);
-    emitToUser(partnerUsername, 'new message notification', {
-      id: inserted.id,
-      room: data.room,
-      from: socket.username,
-      text,
-    });
+    if (!groupId) {
+      const partnerUsername = getRoomPartner(data.room, socket.username);
+      emitToUser(partnerUsername, 'new message notification', {
+        id: inserted.id,
+        room: data.room,
+        from: socket.username,
+        text,
+      });
+    }
   });
 
   // --- Редагування повідомлення ---
@@ -708,6 +1022,12 @@ io.on('connection', (socket) => {
 
     if (fetchErr || !existing || existing.username !== socket.username || existing.deleted) {
       return cb({ success: false, error: 'Неможливо редагувати це повідомлення' });
+    }
+
+    if (isGroupRoom(room)) {
+      const groupId = groupIdFromRoom(room);
+      const myRole = await getMembership(groupId, socket.username);
+      if (!myRole) return cb({ success: false, error: 'Ти не учасник цієї групи' });
     }
 
     if (existing.type && existing.type !== 'text') {
@@ -746,7 +1066,27 @@ io.on('connection', (socket) => {
       .eq('room', room)
       .maybeSingle();
 
-    if (fetchErr || !existing || existing.username !== socket.username) {
+    if (fetchErr || !existing) {
+      return cb({ success: false, error: 'Неможливо видалити це повідомлення' });
+    }
+
+    const isOwnMessage = existing.username === socket.username;
+    const groupId = isGroupRoom(room) ? groupIdFromRoom(room) : null;
+
+    if (groupId) {
+      const myRole = await getMembership(groupId, socket.username);
+      if (!myRole) return cb({ success: false, error: 'Ти не учасник цієї групи' });
+
+      if (isOwnMessage) {
+        // "Раб божий" не може видаляти навіть власні повідомлення
+        if (myRole === 'serf') {
+          return cb({ success: false, error: 'У тебе немає прав видаляти повідомлення' });
+        }
+      } else if (!canDeleteOthersMessages(myRole)) {
+        return cb({ success: false, error: 'У тебе немає прав видаляти чужі повідомлення' });
+      }
+    } else if (!isOwnMessage) {
+      // Приватний чат: можна видаляти лише власні повідомлення
       return cb({ success: false, error: 'Неможливо видалити це повідомлення' });
     }
 
