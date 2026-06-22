@@ -346,14 +346,38 @@ io.on('connection', (socket) => {
     const cleanBio = (bio || '').toString().trim().slice(0, 80);
     const cleanColor = (avatarColor || '').toString().trim().slice(0, 16);
 
-    const { error } = await supabase
+    // Спочатку перевіримо, чи колонки існують, зробивши SELECT
+    const { data: checkData, error: checkError } = await supabase
+      .from('users')
+      .select('bio, avatar_color')
+      .ilike('username', socket.username)
+      .maybeSingle();
+
+    if (checkError) {
+      const msg = checkError.message || '';
+      console.error('[update profile] SELECT check failed:', checkError);
+      if (msg.includes('column') && (msg.includes('bio') || msg.includes('avatar_color'))) {
+        return cb({ success: false, error: 'SQL-міграцію не виконано. Запусти profile-fields.sql у Supabase → SQL Editor' });
+      }
+      return cb({ success: false, error: 'Помилка бази даних: ' + msg });
+    }
+
+    const { error, count } = await supabase
       .from('users')
       .update({ bio: cleanBio, avatar_color: cleanColor || null })
-      .ilike('username', socket.username);
+      .ilike('username', socket.username)
+      .select();
 
     if (error) {
-      console.error(error);
-      return cb({ success: false, error: 'Не вдалося зберегти профіль' });
+      const msg = error.message || '';
+      console.error('[update profile] UPDATE failed:', error);
+      if (msg.includes('column') && (msg.includes('bio') || msg.includes('avatar_color'))) {
+        return cb({ success: false, error: 'SQL-міграцію не виконано. Запусти profile-fields.sql у Supabase → SQL Editor' });
+      }
+      if (msg.includes('row-level security') || msg.includes('policy') || error.code === '42501') {
+        return cb({ success: false, error: 'RLS блокує UPDATE. Додай політику у Supabase → Authentication → Policies' });
+      }
+      return cb({ success: false, error: 'Не вдалося зберегти профіль: ' + msg });
     }
 
     io.emit('profile updated', { username: socket.username, bio: cleanBio, avatarColor: cleanColor });
